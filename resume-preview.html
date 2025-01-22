@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Review Resume Data - LinkedIn Genie</title>
+    <link rel="stylesheet" type="text/css" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Review Resume Data</h1>
+            <p class="subtitle">Please verify and edit if needed</p>
+        </header>
+
+        <main>
+            <form id="resume-form" class="resume-form">
+                <div class="form-section">
+                    <h3>Basic Information</h3>
+                    <div class="form-group">
+                        <label for="name">Full Name</label>
+                        <input type="text" id="name" name="name" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="title">Current Title</label>
+                        <input type="text" id="title" name="title" class="form-input">
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>Skills</h3>
+                    <div class="form-group">
+                        <label>Skills (comma-separated)</label>
+                        <textarea id="skills" name="skills" class="form-input" rows="3"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>Experience</h3>
+                    <div id="experience-container"></div>
+                    <button type="button" id="add-experience" class="secondary-button">Add Experience</button>
+                </div>
+
+                <div class="form-section">
+                    <h3>Education</h3>
+                    <div class="form-group">
+                        <label for="degree">Degree</label>
+                        <input type="text" id="degree" name="education.degree" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="field">Field of Study</label>
+                        <input type="text" id="field" name="education.field" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="school">School</label>
+                        <input type="text" id="school" name="education.school" class="form-input">
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" class="primary-button">Save Changes</button>
+                    <button type="button" id="cancel" class="secondary-button">Cancel</button>
+                </div>
+            </form>
+        </main>
+    </div>
+    <script src="resume-preview.js"></script>
+</body>
+</html>

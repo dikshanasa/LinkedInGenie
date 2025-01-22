@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Update Resume - LinkedIn Genie</title>
+    <link rel="stylesheet" type="text/css" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script type="module" src="pdf-init.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Update Resume</h1>
+            <p class="subtitle">Upload your new resume</p>
+        </header>
+
+        <main>
+            <div class="resume-upload-form">
+                <div class="form-group">
+                    <label for="resume">Choose Resume File</label>
+                    <div class="resume-upload">
+                        <input type="file" id="resume" accept=".pdf,.doc,.docx,.txt" class="file-input">
+                        <label for="resume" class="upload-label">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            Select File
+                        </label>
+                    </div>
+                    <p id="file-name" class="file-name"></p>
+                </div>
+
+                <div id="status" class="status"></div>
+
+                <div id="parsed-content" class="parsed-content hidden">
+                    <h3>Review Resume Information</h3>
+                    <form id="resume-edit-form" class="resume-edit-form">
+                        <div class="form-group">
+                            <label for="edit-name">Name:</label>
+                            <input type="text" id="edit-name" class="form-input" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="edit-title">Current Title:</label>
+                            <input type="text" id="edit-title" class="form-input" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="edit-skills">Skills (comma-separated):</label>
+                            <textarea id="edit-skills" class="form-input" required></textarea>
+                        </div>
+
+                        <div class="form-section">
+                            <h4>Experience</h4>
+                            <div id="experience-container"></div>
+                            <button type="button" id="add-experience" class="secondary-button">Add Experience</button>
+                        </div>
+
+                        <div class="form-section">
+                            <h4>Education</h4>
+                            <div id="education-container"></div>
+                            <button type="button" id="add-education" class="secondary-button">Add Education</button>
+                        </div>
+
+                        <div class="button-group">
+                            <button type="submit" id="save-changes" class="primary-button">Save Changes</button>
+                            <button type="button" id="cancel-edit" class="secondary-button">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+
+                <button id="parse-resume" class="primary-button">Parse Resume</button>
+            </div>
+        </main>
+    </div>
+    <script src="resume-update.js" defer></script>
+</body>
+</html>

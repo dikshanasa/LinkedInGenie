@@ -1,75 +1,138 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>LinkedIn Conversation Starter</title>
-  <link rel="stylesheet" type="text/css" href="styles.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <title>LinkedIn Genie</title>
+    <link rel="stylesheet" type="text/css" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>LinkedIn Genie</h1>
-      <p class="subtitle">AI-Powered Conversation Starter</p>
-    </header>
+    <div class="container">
+        <header>
+            <h1>LinkedIn Genie</h1>
+            <p class="subtitle">AI-Powered Conversation Starter</p>
+        </header>
 
-    <main>
-      <section class="profile-section">
-        <button id="capture-profile" class="primary-button">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          Capture Profile
-        </button>
-        <div id="status" class="status"></div>
-        <div id="profile-info" class="profile-card hidden"></div>
-      </section>
+        <!-- Auth Section -->
+        <section id="auth-section" class="auth-section">
+            <div id="login-form" class="auth-form">
+                <h3>Login</h3>
+                <input type="email" id="login-email" placeholder="Email" class="auth-input">
+                <input type="password" id="login-password" placeholder="Password" class="auth-input">
+                <button id="login-button" class="primary-button">Login</button>
+                <p class="auth-switch">Don't have an account? <a href="#" id="show-signup">Sign Up</a></p>
+            </div>
+        </section>
 
-      <section id="message-options" class="message-section hidden">
-        <div class="select-wrapper">
-          <label for="message-goal">Message Goal</label>
-          <select id="message-goal" class="select-input">
-            <option value="">Select a goal</option>
-            <option value="follow-up">Application Follow-up</option>
-            <option value="connection">Professional Connection</option>
-            <option value="referral">Referral Request</option>
-          </select>
-        </div>
-      </section>
+        <!-- Main App Section -->
+        <main id="main-app" class="hidden">
+            <!-- User Profile Section -->
+            <section id="user-profile" class="user-profile">
+                <div class="profile-header">
+                    <h3>Your Resume Details</h3>
+                    <div class="profile-actions">
+                        <button id="update-resume" class="secondary-button">Update Resume</button>
+                        <button id="logout" class="text-button">Logout</button>
+                    </div>
+                </div>
+                <div id="resume-info" class="resume-info">
+                    <div class="resume-section">
+                        <h4>Current Role</h4>
+                        <p id="resume-title"></p>
+                    </div>
+                    <div class="resume-section">
+                        <h4>Skills</h4>
+                        <div id="resume-skills" class="skills-container"></div>
+                    </div>
+                    <div class="resume-section">
+                        <h4>Experience</h4>
+                        <div id="resume-experience"></div>
+                    </div>
+                    <div class="resume-section">
+                        <h4>Education</h4>
+                        <div id="resume-education"></div>
+                    </div>
+                </div>
+            </section>
 
-      <section id="ice-breakers" class="ice-breakers-section hidden">
-        <h2>Ice Breaker Suggestions</h2>
-        <div class="ice-breakers-container"></div>
-      </section>
+            <!-- LinkedIn Profile Capture Section -->
+            <section id="profile-section" class="profile-section">
+                <div class="section-header">
+                    <h3>LinkedIn Profile</h3>
+                    <button id="capture-profile" class="primary-button">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        Capture Profile
+                    </button>
+                </div>
+                <div id="status" class="status"></div>
+                <div id="profile-info" class="profile-info hidden">
+                    <div class="profile-section">
+                        <h4>Name</h4>
+                        <p id="profile-name"></p>
+                    </div>
+                    <div class="profile-section">
+                        <h4>Title</h4>
+                        <p id="profile-title"></p>
+                    </div>
+                    <div class="profile-section">
+                        <h4>Company</h4>
+                        <p id="profile-company"></p>
+                    </div>
+                    <div class="profile-section">
+                        <h4>Skills</h4>
+                        <div id="profile-skills" class="skills-container"></div>
+                    </div>
+                    <div class="profile-section">
+                        <h4>About</h4>
+                        <p id="profile-about"></p>
+                    </div>
+                    <div class="profile-section">
+                        <h4>Recent Activity</h4>
+                        <p id="profile-activity"></p>
+                    </div>
+                </div>
+            </section>
 
-      <section id="message-length-option" class="message-length-section hidden">
-        <div class="select-wrapper">
-          <label for="message-length">Message Length</label>
-          <select id="message-length" class="select-input">
-            <option value="short">Short (2-3 sentences)</option>
-            <option value="medium">Medium (4-5 sentences)</option>
-            <option value="long">Long (6-7 sentences)</option>
-          </select>
-        </div>
-        <button id="generate-message" class="secondary-button">Generate Message</button>
-      </section>
+            <!-- Message Options Section -->
+            <section id="message-options" class="message-section hidden">
+                <div class="section-header">
+                    <h3>Message Goal</h3>
+                    <select id="message-goal" class="select-input">
+                        <option value="">Select a goal</option>
+                        <option value="follow-up">Application Follow-up</option>
+                        <option value="connection">Professional Connection</option>
+                        <option value="referral">Referral Request</option>
+                    </select>
+                </div>
+            </section>
 
-      <section id="generated-message" class="message-section hidden">
-        <div class="message-container">
-          <div class="message-content"></div>
-          <button id="copy-message" class="copy-button">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-            Copy Message
-          </button>
-        </div>
-      </section>
-    </main>
-  </div>
-  <script src="config.js"></script>
-  <script src="popup.js"></script>
+            <!-- Ice Breakers Section -->
+            <section id="ice-breakers" class="ice-breakers-section hidden">
+                <h3>Ice Breaker Options</h3>
+                <div class="ice-breakers-container"></div>
+            </section>
+
+            <!-- Message Length Section -->
+            <section id="message-length-option" class="message-length-section hidden">
+                <div class="section-header">
+                    <h3>Message Length</h3>
+                    <select id="message-length" class="select-input">
+                        <option value="short">Short (2-3 sentences)</option>
+                        <option value="medium">Medium (4-5 sentences)</option>
+                        <option value="long">Long (6-7 sentences)</option>
+                    </select>
+                </div>
+                <button id="generate-message" class="secondary-button">Generate Message</button>
+            </section>
+
+            <!-- Generated Message Section -->
+            <section id="generated-message" class="message-section hidden"></section>
+        </main>
+    </div>
+    <script src="config.js"></script>
+    <script src="popup.js"></script>
 </body>
 </html>
