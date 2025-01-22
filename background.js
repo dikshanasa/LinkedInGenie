@@ -282,17 +282,30 @@ async function generateIceBreakers({ profileData, resumeData, goal }) {
         messages: [
           {
             role: "system",
-            content: `Generate professional and personalized LinkedIn ice breakers based on shared background and interests. 
-            Focus on creating genuine connections.`
+            content: `You are an expert at creating personalized LinkedIn ice breakers that:
+            1. Are highly specific to the recipient's background and recent activities
+            2. Demonstrate genuine interest and research
+            3. Align perfectly with the chosen goal (${goal})
+            4. Create meaningful connections based on shared experiences
+            5. Show clear value proposition`
           },
           {
             role: "user",
-            content: `Create personalized ice breakers for a ${goal} message to ${profileData.name}.
-            Return them in this JSON format:
+            content: `Create highly personalized ice breakers for a ${goal} message to ${profileData.name}.
+            Return exactly three categories with two options each:
             {
-              "Skills & Experience": ["ice breaker 1", "ice breaker 2"],
-              "Recent Activity": ["ice breaker 1", "ice breaker 2"],
-              "Company & Role": ["ice breaker 1", "ice breaker 2"]
+              "Skills & Experience": [
+                "A specific comment about their technical skills and your related experience",
+                "A targeted observation about their career progression and your similar interests"
+              ],
+              "Recent Activity": [
+                "A thoughtful response to their recent post or achievement",
+                "A connection between their recent activity and your current work"
+              ],
+              "Company & Role": [
+                "A specific observation about their current role and your relevant experience",
+                "A targeted comment about their company's work and your related background"
+              ]
             }
 
             Profile Information:
@@ -307,16 +320,17 @@ async function generateIceBreakers({ profileData, resumeData, goal }) {
             - Skills: ${resumeData.skills.join(', ')}
             - Experience: ${resumeData.experience[0].title} at ${resumeData.experience[0].company}
             
-            Guidelines:
-            - Keep each ice breaker under 150 characters
-            - Make them personal and specific
-            - Focus on shared interests and experiences
-            - Avoid generic statements
-            - Be professional but conversational`
+            Requirements:
+            - Each ice breaker must be specific and reference actual details
+            - Include clear connections between your backgrounds
+            - Focus on mutual professional interests
+            - Demonstrate knowledge of their work
+            - Align with ${goal} purpose
+            - Maximum 150 characters per ice breaker`
           }
         ],
         max_tokens: 1000,
-        temperature: 0.7
+        temperature: 0.5
       })
     });
 
@@ -325,7 +339,6 @@ async function generateIceBreakers({ profileData, resumeData, goal }) {
     }
 
     const data = await response.json();
-    console.log('Ice breakers response:', data.choices[0].message.content);
     return JSON.parse(data.choices[0].message.content);
   } catch (error) {
     console.error('Error generating ice breakers:', error);
@@ -348,40 +361,40 @@ async function generateMessage({ profileData, resumeData, iceBreaker, goal, leng
         messages: [
           {
             role: "system",
-            content: `Generate a professional LinkedIn message that is:
-            - Natural and conversational
-            - Focused on relevant experience and mutual value
-            - Clear in purpose
-            - Free of marketing language or hashtags
-            - Properly formatted for LinkedIn`
+            content: `You are an expert at crafting professional LinkedIn messages that:
+            1. Are highly personalized and demonstrate genuine interest
+            2. Show clear value proposition and mutual benefit
+            3. Have a specific purpose aligned with the goal
+            4. Maintain professional tone while being conversational
+            5. End with a clear, actionable next step`
           },
           {
             role: "user",
-            content: `Write a ${length} LinkedIn ${goal} message.
+            content: `Write a ${length} LinkedIn ${goal} message that achieves its purpose effectively.
             
             Context:
             - Recipient: ${profileData.name} (${profileData.title} at ${profileData.company})
-            - Their Recent Post: ${profileData.recentPost ||             'None'}
+            - Their Recent Post: ${profileData.recentPost || 'None'}
             - Selected Ice Breaker: "${iceBreaker}"
             - My Background: ${resumeData.title}
             - My Skills: ${resumeData.skills.join(', ')}
             - My Experience: ${resumeData.experience[0].title} at ${resumeData.experience[0].company}
             
-            Length Guide:
-            - short: 2-3 sentences
-            - medium: 4-5 sentences
-            - long: 6-7 sentences
-            
-            Guidelines:
-            - Start with the ice breaker
-            - Make it personal and specific
-            - Focus on mutual value
+            Requirements:
+            - Start with a personalized greeting
+            - Incorporate the ice breaker naturally
+            - Highlight specific shared interests or experiences
+            - Demonstrate clear value proposition
+            - Include specific details from both backgrounds
             - End with a clear call to action
-            - Keep it professional but friendly`
+            - Match the specified length (${length})
+            - Maintain professional yet friendly tone
+            - Focus on mutual benefit
+            - Align with ${goal} purpose`
           }
         ],
         max_tokens: 500,
-        temperature: 0.7
+        temperature: 0.4
       })
     });
 
@@ -396,4 +409,5 @@ async function generateMessage({ profileData, resumeData, iceBreaker, goal, leng
     throw error;
   }
 }
+
 
