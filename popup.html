@@ -3,31 +3,72 @@
 <head>
   <title>LinkedIn Conversation Starter</title>
   <link rel="stylesheet" type="text/css" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
-  <h2>LinkedIn Conversation Starter</h2>
-  <button id="capture-profile">Capture Profile</button>
-  <div id="status"></div>
-  <div id="profile-info" class="hidden"></div>
-  <div id="message-options" class="hidden">
-    <select id="message-goal">
-      <option value="">Select a goal</option>
-      <option value="follow-up">Application Follow-up</option>
-      <option value="connection">Professional Connection</option>
-      <option value="referral">Referral Request</option>
-    </select>
+  <div class="container">
+    <header>
+      <h1>LinkedIn Genie</h1>
+      <p class="subtitle">AI-Powered Conversation Starter</p>
+    </header>
+
+    <main>
+      <section class="profile-section">
+        <button id="capture-profile" class="primary-button">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Capture Profile
+        </button>
+        <div id="status" class="status"></div>
+        <div id="profile-info" class="profile-card hidden"></div>
+      </section>
+
+      <section id="message-options" class="message-section hidden">
+        <div class="select-wrapper">
+          <label for="message-goal">Message Goal</label>
+          <select id="message-goal" class="select-input">
+            <option value="">Select a goal</option>
+            <option value="follow-up">Application Follow-up</option>
+            <option value="connection">Professional Connection</option>
+            <option value="referral">Referral Request</option>
+          </select>
+        </div>
+      </section>
+
+      <section id="ice-breakers" class="ice-breakers-section hidden">
+        <h2>Ice Breaker Suggestions</h2>
+        <div class="ice-breakers-container"></div>
+      </section>
+
+      <section id="message-length-option" class="message-length-section hidden">
+        <div class="select-wrapper">
+          <label for="message-length">Message Length</label>
+          <select id="message-length" class="select-input">
+            <option value="short">Short (2-3 sentences)</option>
+            <option value="medium">Medium (4-5 sentences)</option>
+            <option value="long">Long (6-7 sentences)</option>
+          </select>
+        </div>
+        <button id="generate-message" class="secondary-button">Generate Message</button>
+      </section>
+
+      <section id="generated-message" class="message-section hidden">
+        <div class="message-container">
+          <div class="message-content"></div>
+          <button id="copy-message" class="copy-button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            Copy Message
+          </button>
+        </div>
+      </section>
+    </main>
   </div>
-  <div id="ice-breakers" class="hidden"></div>
-  <div id="message-length-option" class="hidden">
-    <select id="message-length">
-      <option value="short">Short</option>
-      <option value="medium">Medium</option>
-      <option value="long">Long</option>
-    </select>
-    <button id="generate-message">Generate Message</button>
-  </div>
-  <div id="generated-message" class="hidden"></div>
-  <div id="saved-messages"></div>
   <script src="config.js"></script>
   <script src="popup.js"></script>
 </body>

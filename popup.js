@@ -11,7 +11,6 @@ document.addEventListener('DOMContentLoaded', function() {
   captureButton.addEventListener('click', captureProfile);
   generateButton.addEventListener('click', generateMessage);
   messageGoal.addEventListener('change', generateIceBreakers);
-  displaySavedMessages();
 });
 
 async function captureProfile() {
@@ -22,13 +21,11 @@ async function captureProfile() {
   profileInfo.classList.add('hidden');
 
   try {
-    // Check if we're on LinkedIn
     const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
     if (!tab.url.includes('linkedin.com')) {
       throw new Error('Please navigate to a LinkedIn profile page');
     }
 
-    // Ensure content script is injected
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       files: ['content.js']
@@ -63,9 +60,6 @@ async function captureProfile() {
   }
 }
 
-// ... rest of your popup.js code remains the same
-
-
 async function processProfileData(content) {
   console.log('Processing profile data...');
   return new Promise((resolve, reject) => {
@@ -86,16 +80,17 @@ function displayProfileInfo(profileData) {
   const profileInfo = document.getElementById('profile-info');
   profileInfo.innerHTML = `
     <h3>${profileData.name || 'Name not available'}</h3>
+    <p><strong>Title:</strong> ${profileData.title || 'Title not available'}</p>
+    <p><strong>Company:</strong> ${profileData.company || 'Company not available'}</p>
     <p><strong>Skills:</strong> ${profileData.skills ? profileData.skills.join(', ') : 'No skills listed'}</p>
     <p><strong>About:</strong> ${profileData.about ? profileData.about.substring(0, 200) + '...' : 'No about section available'}</p>
-    ${profileData.recentPost ? `<p><strong>Recent Post:</strong> ${typeof profileData.recentPost === 'string' ? profileData.recentPost.substring(0, 100) + '...' : 'Post content not available'}</p>` : ''}
+    ${profileData.recentPost ? `<p><strong>Recent Post:</strong> ${profileData.recentPost.substring(0, 100)}...</p>` : ''}
   `;
   profileInfo.classList.remove('hidden');
   console.log('Profile info displayed');
 }
 
 async function generateIceBreakers() {
-  console.log('Generating ice breakers...');
   if (!profileData) {
     console.warn('No profile data available for ice breakers');
     return;
@@ -103,31 +98,76 @@ async function generateIceBreakers() {
 
   const goal = document.getElementById('message-goal').value;
   const iceBreakers = document.getElementById('ice-breakers');
-  iceBreakers.innerHTML = '<h3>Ice Breaker Suggestions:</h3>';
+  iceBreakers.innerHTML = '<h3>Ice Breaker Categories:</h3>';
   iceBreakers.classList.remove('hidden');
 
   try {
-    const prompt = `Generate 3 unique ice breakers for a ${goal} message to ${profileData.name}. 
-    Their skills include ${profileData.skills.join(', ')}. 
-    About them: ${profileData.about}
-    ${profileData.recentPost ? `They recently posted about: ${profileData.recentPost}` : ''}
-    
-    The ice breakers should be professional, personalized, and engaging.`;
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.GROQ_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "mixtral-8x7b-32768",
+        messages: [
+          {
+            role: "system",
+            content: `Generate categorized ice breakers for LinkedIn messages. 
+            Categories should be:
+            - Skills & Experience
+            - Recent Activity
+            - Company & Role
+            Each category should have one concise ice breaker.`
+          },
+          {
+            role: "user",
+            content: `Create categorized ice breakers for ${goal} to ${profileData.name}.
+            Profile:
+            - Role: ${profileData.title} at ${profileData.company}
+            - Recent Activity: ${profileData.recentPost}
+            - Skills: ${profileData.skills.slice(0, 3).join(', ')}
+            - About: ${profileData.about}
 
-    const iceBreakersArray = [
-      `I noticed your experience in ${profileData.skills[0]}. How has this skill been valuable in your current role?`,
-      `Your background in ${profileData.skills[1] || profileData.skills[0]} caught my attention. I'd love to learn more about your work.`,
-      `I see you've worked extensively in ${profileData.about ? profileData.about.substring(0, 30) + '...' : 'your field'}. Would you be open to connecting?`
-    ];
-
-    iceBreakersArray.forEach((iceBreaker, index) => {
-      const button = document.createElement('button');
-      button.textContent = iceBreaker;
-      button.classList.add('ice-breaker-btn');
-      button.addEventListener('click', () => selectIceBreaker(iceBreaker));
-      iceBreakers.appendChild(button);
+            Return as JSON object with categories as keys and ice breakers as values.
+            Keep each ice breaker under 100 characters.`
+          }
+        ],
+        max_tokens: 250,
+        temperature: 0.7
+      })
     });
 
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const iceBreakersObj = JSON.parse(data.choices[0].message.content);
+
+    // Create a container for categories
+    const categoriesContainer = document.createElement('div');
+    categoriesContainer.className = 'ice-breaker-categories';
+
+    // Create sections for each category
+    Object.entries(iceBreakersObj).forEach(([category, iceBreaker]) => {
+      const categorySection = document.createElement('div');
+      categorySection.className = 'ice-breaker-category';
+      
+      const categoryTitle = document.createElement('h4');
+      categoryTitle.textContent = category;
+      categorySection.appendChild(categoryTitle);
+
+      const button = document.createElement('button');
+      button.textContent = iceBreaker;
+      button.className = 'ice-breaker-btn';
+      button.addEventListener('click', () => selectIceBreaker(iceBreaker));
+      categorySection.appendChild(button);
+
+      categoriesContainer.appendChild(categorySection);
+    });
+
+    iceBreakers.appendChild(categoriesContainer);
     document.getElementById('message-length-option').classList.remove('hidden');
   } catch (error) {
     console.error('Error generating ice breakers:', error);
@@ -143,46 +183,126 @@ function selectIceBreaker(iceBreaker) {
 }
 
 async function generateMessage() {
-  console.log('Generating message...');
-  const statusElement = document.getElementById('status');
   if (!profileData || !selectedIceBreaker) {
     console.warn('No profile data or ice breaker selected');
-    statusElement.textContent = 'Error: Please capture profile and select an ice breaker first.';
     return;
   }
 
+  const goal = document.getElementById('message-goal').value;
+  const length = document.getElementById('message-length').value;
   const messageElement = document.getElementById('generated-message');
-  statusElement.textContent = 'Generating message...';
-  messageElement.classList.add('hidden');
+
+  const messageStructure = {
+    short: {
+      format: "2-3 sentences",
+      structure: "Opening + Key Point + Call to Action",
+      maxLength: 300
+    },
+    medium: {
+      format: "4-5 sentences",
+      structure: "Opening + Context + 2 Key Points + Call to Action",
+      maxLength: 500
+    },
+    long: {
+      format: "6-7 sentences",
+      structure: "Opening + Context + 3 Key Points + Value Proposition + Call to Action",
+      maxLength: 700
+    }
+  };
 
   try {
-    const goal = document.getElementById('message-goal').value;
-    const length = document.getElementById('message-length').value;
-    console.log('Message parameters:', { goal, length, selectedIceBreaker });
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.GROQ_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "mixtral-8x7b-32768",
+        messages: [
+          {
+            role: "system",
+            content: `You are a professional LinkedIn message writer creating a ${length} message.
+            Message Structure: ${messageStructure[length].structure}
+            Maximum Length: ${messageStructure[length].maxLength} characters
+            Focus on being concise, specific, and maintaining a professional tone.`
+          },
+          {
+            role: "user",
+            content: `Write a ${messageStructure[length].format} LinkedIn message to ${profileData.name}.
 
-    const prompt = `Generate a ${length} LinkedIn message for ${goal} to ${profileData.name}. 
-    Their skills include ${profileData.skills.join(', ')}. 
-    About them: ${profileData.about}
-    ${profileData.recentPost ? `They recently posted about: ${profileData.recentPost}` : ''}
-    
-    Use this ice breaker as the opening line: "${selectedIceBreaker}"
-    
-    The message should be professional, personalized, and engaging.`;
+            Context:
+            - Their Role: ${profileData.title} at ${profileData.company}
+            - Recent Activity: ${profileData.recentPost}
+            - Their Background: ${profileData.about}
+            - Selected Opening: "${selectedIceBreaker}"
+            - Message Goal: ${goal}
 
-    const message = `Dear ${profileData.name},\n\n${selectedIceBreaker}\n\nI came across your profile and was impressed by your experience in ${profileData.skills.join(', ')}. Your work in ${profileData.about ? profileData.about.substring(0, 50) + '...' : 'your field'} aligns with my interests, and I would love to connect and learn more about your experiences.\n\nLooking forward to your response.\n\nBest regards`;
+            Requirements:
+            - Start with the selected opening
+            - Include one specific detail about their work
+            - Focus on ${goal === 'follow-up' ? 'the specific role and your relevant experience' : 
+                        goal === 'connection' ? 'mutual professional interests and potential collaboration' : 
+                        'your interest in their company and specific request'}
+            - End with one clear call to action
+            - Keep it under ${messageStructure[length].maxLength} characters`
+          }
+        ],
+        max_tokens: 350,
+        temperature: 0.7
+      })
+    });
 
-    messageElement.innerHTML = `<h3>Generated Message:</h3><p>${message}</p>
-      <button id="save-message">Save Message</button>`;
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const message = data.choices[0].message.content.trim();
+
+    messageElement.innerHTML = `
+      <div class="message-container">
+        <div class="message-content">${message}</div>
+        <button id="copy-message" class="copy-button">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          Copy Message
+        </button>
+        <div class="copy-feedback">Message copied!</div>
+      </div>`;
     messageElement.classList.remove('hidden');
-    statusElement.textContent = 'Message generated successfully!';
     
-    document.getElementById('save-message').addEventListener('click', function() {
-      saveMessage(message);
-      displaySavedMessages();
+    document.getElementById('copy-message').addEventListener('click', async function() {
+      try {
+        await navigator.clipboard.writeText(message);
+        this.classList.add('copied');
+        this.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          Copied!
+        `;
+        const feedback = messageElement.querySelector('.copy-feedback');
+        feedback.classList.add('show');
+        setTimeout(() => {
+          this.classList.remove('copied');
+          this.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            Copy Message
+          `;
+          feedback.classList.remove('show');
+        }, 2000);
+      } catch (err) {
+        console.error('Failed to copy message:', err);
+      }
     });
   } catch (error) {
     console.error('Error generating message:', error);
-    statusElement.textContent = 'Error: Failed to generate message.';
     showError(messageElement, "Failed to generate message. Please try again.");
   }
 }
@@ -191,35 +311,4 @@ function showError(element, message) {
   console.error('Showing error:', message);
   element.innerHTML = `<p class="error">${message}</p>`;
   element.classList.remove('hidden');
-}
-
-function saveMessage(message) {
-  console.log('Saving message...');
-  chrome.storage.local.get({savedMessages: []}, function(result) {
-    let savedMessages = result.savedMessages;
-    savedMessages.push({
-      message: message,
-      timestamp: new Date().toISOString()
-    });
-    chrome.storage.local.set({savedMessages: savedMessages}, function() {
-      console.log('Message saved successfully');
-    });
-  });
-}
-
-function displaySavedMessages() {
-  console.log('Displaying saved messages...');
-  chrome.storage.local.get({savedMessages: []}, function(result) {
-    const savedMessagesElement = document.getElementById('saved-messages');
-    if (result.savedMessages.length > 0) {
-      const messageList = result.savedMessages.map(item => 
-        `<li>${item.message} <small>(${new Date(item.timestamp).toLocaleString()})</small></li>`
-      ).join('');
-      savedMessagesElement.innerHTML = `<h3>Saved Messages:</h3><ul>${messageList}</ul>`;
-      console.log(`Displayed ${result.savedMessages.length} saved messages`);
-    } else {
-      savedMessagesElement.innerHTML = '<p>No saved messages yet.</p>';
-      console.log('No saved messages to display');
-    }
-  });
 }

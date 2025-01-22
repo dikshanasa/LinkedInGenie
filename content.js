@@ -1,20 +1,13 @@
 console.log('LinkedIn Conversation Starter content script loaded');
 
-// Notify background script that content script is loaded
-chrome.runtime.sendMessage({ action: "contentScriptLoaded" });
-
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('Content script received message:', request);
   
   if (request.action === "captureProfile") {
     try {
       console.log('Capturing profile content...');
-      const rawContent = document.body.innerText || document.body.textContent;
-      console.log('Raw content length:', rawContent.length);
-      
-      const processedContent = preprocessContent(rawContent);
-      console.log('Processed content length:', processedContent.length);
-      
+      const profileContent = extractProfileContent();
+      const processedContent = preprocessContent(profileContent);
       sendResponse({pageContent: processedContent});
       console.log('Content sent to popup');
     } catch (error) {
@@ -22,20 +15,36 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse({error: error.message});
     }
   }
-  return true;  // Keep the message channel open for async response
+  return true;
 });
 
+function extractProfileContent() {
+  const name = document.querySelector('.text-heading-xlarge')?.innerText || '';
+  const headline = document.querySelector('.text-body-medium')?.innerText || '';
+  const about = document.querySelector('#about ~ div .display-flex')?.innerText || '';
+  const experienceSection = document.querySelector('#experience ~ div .pvs-list')?.innerText || '';
+  const skillsSection = document.querySelector('#skills ~ div .pvs-list')?.innerText || '';
+  const recentActivity = document.querySelector('.feed-shared-update-v2')?.innerText || '';
+
+  return `
+    Name: ${name}
+    Headline: ${headline}
+    About: ${about}
+    Experience: ${experienceSection}
+    Skills: ${skillsSection}
+    Recent Activity: ${recentActivity}
+  `;
+}
+
 function preprocessContent(content) {
-  console.log('Preprocessing content...');
-  
   // Remove URLs and links
   content = content.replace(/(?:https?|ftp):\/\/[\n\S]+/g, '');
   
   // Remove image descriptions and brackets
   content = content.replace(/\[.*?\]/g, '');
   
-  // Remove special characters and emojis
-  content = content.replace(/[^\x00-\x7F]/g, '');
+  // Remove special characters while keeping basic punctuation
+  content = content.replace(/[^\x20-\x7E\n.,!?-]/g, '');
   
   // Normalize whitespace
   content = content.replace(/\s+/g, ' ').trim();
