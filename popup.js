@@ -192,21 +192,87 @@ async function generateMessage() {
   const length = document.getElementById('message-length').value;
   const messageElement = document.getElementById('generated-message');
 
-  const messageStructure = {
-    short: {
-      format: "2-3 sentences",
-      structure: "Opening + Key Point + Call to Action",
-      maxLength: 300
+  const messageTemplates = {
+    'follow-up': {
+      short: `Hi ${profileData.name},
+
+{ice_breaker}
+
+I'd appreciate the opportunity to discuss my application and how my experience aligns with the team's needs.
+
+Best regards`,
+      
+      medium: `Hi ${profileData.name},
+
+{ice_breaker}
+
+With my background in {relevant_skills}, I'm particularly excited about contributing to {company}'s initiatives in this space. I'd appreciate the opportunity to discuss my application and how my experience aligns with the team's needs.
+
+Best regards`,
+      
+      long: `Hi ${profileData.name},
+
+{ice_breaker}
+
+With my background in {relevant_skills}, I'm particularly excited about contributing to {company}'s initiatives in this space. I believe my experience in {specific_skill} would be valuable for the team.
+
+I'd appreciate the opportunity to discuss my application and how my experience aligns with the team's needs.
+
+Best regards`
     },
-    medium: {
-      format: "4-5 sentences",
-      structure: "Opening + Context + 2 Key Points + Call to Action",
-      maxLength: 500
+    'connection': {
+      short: `Hi ${profileData.name},
+
+{ice_breaker}
+
+Would you be open to connecting?
+
+Best regards`,
+      
+      medium: `Hi ${profileData.name},
+
+{ice_breaker}
+
+I believe we could have some interesting discussions about {shared_interest}. Would you be open to connecting?
+
+Best regards`,
+      
+      long: `Hi ${profileData.name},
+
+{ice_breaker}
+
+I believe we could have some interesting discussions about {shared_interest}, and I'd love to learn more about your experiences in {specific_area}.
+
+Would you be open to connecting?
+
+Best regards`
     },
-    long: {
-      format: "6-7 sentences",
-      structure: "Opening + Context + 3 Key Points + Value Proposition + Call to Action",
-      maxLength: 700
+    'referral': {
+      short: `Hi ${profileData.name},
+
+{ice_breaker}
+
+Would you be open to a brief conversation about opportunities at {company}?
+
+Best regards`,
+      
+      medium: `Hi ${profileData.name},
+
+{ice_breaker}
+
+I've been following {company}'s work in {specific_area} and would love to learn more about the team. Would you be open to a brief conversation about potential opportunities?
+
+Best regards`,
+      
+      long: `Hi ${profileData.name},
+
+{ice_breaker}
+
+I've been following {company}'s work in {specific_area} and am particularly impressed by {specific_project}. I believe my experience in {relevant_skills} could be valuable for the team.
+
+Would you be open to a brief conversation about potential opportunities?
+
+Best regards`
     }
   };
 
@@ -222,30 +288,28 @@ async function generateMessage() {
         messages: [
           {
             role: "system",
-            content: `You are a professional LinkedIn message writer creating a ${length} message.
-            Message Structure: ${messageStructure[length].structure}
-            Maximum Length: ${messageStructure[length].maxLength} characters
-            Focus on being concise, specific, and maintaining a professional tone.`
+            content: `You are a professional LinkedIn message writer creating natural, conversational messages.
+            Focus on:
+            - Professional but friendly tone
+            - Clear purpose
+            - Specific details
+            - Natural language
+            - No hashtags or links
+            - No marketing language`
           },
           {
             role: "user",
-            content: `Write a ${messageStructure[length].format} LinkedIn message to ${profileData.name}.
+            content: `Create a ${length} LinkedIn message using this template:
+            ${messageTemplates[goal][length]}
 
             Context:
+            - Ice Breaker: ${selectedIceBreaker}
             - Their Role: ${profileData.title} at ${profileData.company}
-            - Recent Activity: ${profileData.recentPost}
-            - Their Background: ${profileData.about}
-            - Selected Opening: "${selectedIceBreaker}"
-            - Message Goal: ${goal}
+            - Their Skills: ${profileData.skills.join(', ')}
+            - Recent Post: ${profileData.recentPost}
 
-            Requirements:
-            - Start with the selected opening
-            - Include one specific detail about their work
-            - Focus on ${goal === 'follow-up' ? 'the specific role and your relevant experience' : 
-                        goal === 'connection' ? 'mutual professional interests and potential collaboration' : 
-                        'your interest in their company and specific request'}
-            - End with one clear call to action
-            - Keep it under ${messageStructure[length].maxLength} characters`
+            Replace template variables with relevant, specific details.
+            Keep the tone professional and natural.`
           }
         ],
         max_tokens: 350,
@@ -270,32 +334,26 @@ async function generateMessage() {
           </svg>
           Copy Message
         </button>
-        <div class="copy-feedback">Message copied!</div>
       </div>`;
     messageElement.classList.remove('hidden');
     
     document.getElementById('copy-message').addEventListener('click', async function() {
       try {
         await navigator.clipboard.writeText(message);
-        this.classList.add('copied');
         this.innerHTML = `
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
-          Copied!
-        `;
-        const feedback = messageElement.querySelector('.copy-feedback');
-        feedback.classList.add('show');
+          Copied!`;
+        this.classList.add('copied');
         setTimeout(() => {
-          this.classList.remove('copied');
           this.innerHTML = `
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
             </svg>
-            Copy Message
-          `;
-          feedback.classList.remove('show');
+            Copy Message`;
+          this.classList.remove('copied');
         }, 2000);
       } catch (err) {
         console.error('Failed to copy message:', err);
@@ -306,6 +364,7 @@ async function generateMessage() {
     showError(messageElement, "Failed to generate message. Please try again.");
   }
 }
+
 
 function showError(element, message) {
   console.error('Showing error:', message);

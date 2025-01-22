@@ -40,11 +40,21 @@ async function processProfileData(content) {
         messages: [
           {
             role: "system",
-            content: "You are a professional LinkedIn profile analyzer. Extract key information and always return valid JSON."
+            content: "You are a professional LinkedIn profile analyzer. Extract information and format as a valid JSON object with specific fields."
           },
           {
             role: "user",
-            content: `Analyze this LinkedIn profile and extract: name, title, company, skills (focus on top 5-7 most relevant skills), a concise about section summary, and any recent posts or activities. Return as JSON with fields: name (string), title (string), company (string), skills (array), about (string), and recentPost (string or null). Content: ${content}`
+            content: `Extract the following information from this LinkedIn profile and return as a single JSON object:
+            {
+              "name": "Full Name",
+              "title": "Current Title",
+              "company": "Company Name",
+              "skills": ["Skill 1", "Skill 2", "Skill 3"],
+              "about": "Brief about section",
+              "recentPost": "Most recent post or null"
+            }
+            
+            Profile content: ${content}`
           }
         ],
         max_tokens: 1000,
@@ -57,7 +67,19 @@ async function processProfileData(content) {
     }
 
     const data = await response.json();
-    return JSON.parse(data.choices[0].message.content);
+    const aiResponse = data.choices[0].message.content;
+    
+    try {
+      return JSON.parse(aiResponse);
+    } catch (parseError) {
+      const jsonStart = aiResponse.indexOf('{');
+      const jsonEnd = aiResponse.lastIndexOf('}') + 1;
+      if (jsonStart >= 0 && jsonEnd > jsonStart) {
+        const cleanJson = aiResponse.slice(jsonStart, jsonEnd);
+        return JSON.parse(cleanJson);
+      }
+      throw new Error('Failed to parse AI response as valid JSON');
+    }
   } catch (error) {
     console.error('Error in AI processing:', error);
     throw error;
