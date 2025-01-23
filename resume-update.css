@@ -1,0 +1,346 @@
+:root {
+    --primary-color: #0a66c2;
+    --primary-hover: #004182;
+    --primary-light: #e8f0fe;
+    --success-color: #059669;
+    --error-color: #dc2626;
+    --text-primary: #111827;
+    --text-secondary: #6b7280;
+    --border-color: #e5e7eb;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, #f0f7ff 0%, #f5f3ff 100%);
+    min-height: 100vh;
+}
+
+.container {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Background Effects */
+.background-effects {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+}
+
+.blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(40px);
+    opacity: 0.7;
+    mix-blend-mode: multiply;
+}
+
+.blob-1 {
+    top: 25%;
+    left: -1rem;
+    width: 18rem;
+    height: 18rem;
+    background: #e0f2fe;
+    animation: float 8s ease-in-out infinite;
+}
+
+.blob-2 {
+    top: 33%;
+    right: -1rem;
+    width: 18rem;
+    height: 18rem;
+    background: #e0e7ff;
+    animation: float 8s ease-in-out infinite 2s;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+}
+
+/* Content Styles */
+.content-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 3rem 1rem;
+    max-width: 42rem;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.header-section {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.icon-large {
+    width: 2.5rem;
+    height: 2.5rem;
+    color: var(--primary-color);
+}
+
+.header-section h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.header-section h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0.5rem 0;
+}
+
+.subtitle {
+    color: var(--text-secondary);
+    font-size: 1rem;
+}
+
+/* Upload Card Styles */
+.upload-card {
+    background: white;
+    border-radius: 1rem;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    overflow: hidden;
+}
+
+.card-header {
+    padding: 1.5rem;
+    background: #f9fafb;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.card-header h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.card-header p {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.card-content {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* Upload Area Styles */
+.upload-area {
+    position: relative;
+    border: 2px dashed #e5e7eb;
+    border-radius: 0.75rem;
+    padding: 2rem;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.upload-area:hover {
+    border-color: var(--primary-color);
+}
+
+.file-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.upload-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.upload-icon-wrapper {
+    width: 4rem;
+    height: 4rem;
+    background: var(--primary-light);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.upload-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    color: var(--primary-color);
+}
+
+.upload-text {
+    font-size: 1.125rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.upload-subtext {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+
+.upload-hint {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+}
+
+/* File Preview Styles */
+.file-preview {
+    background: #f9fafb;
+    border: 1px solid var(--border-color);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+}
+
+.file-preview-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.file-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.file-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0.5rem;
+    background: var(--primary-light);
+    border-radius: 0.5rem;
+    color: var(--primary-color);
+}
+
+.file-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.file-name {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.file-size {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+/* Parse Status Styles */
+.parse-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.parse-status.parsing {
+    background: var(--primary-light);
+    color: var(--primary-color);
+}
+
+.parse-status.success {
+    background: #ecfdf5;
+    color: var(--success-color);
+}
+
+.parse-status.error {
+    background: #fef2f2;
+    color: var(--error-color);
+}
+
+/* Button Styles */
+.parse-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    cursor: pointer;
+    border: none;
+}
+
+.parse-button:disabled {
+    background: #f3f4f6;
+    color: #9ca3af;
+    cursor: not-allowed;
+}
+
+.parse-button:not(:disabled) {
+    background: var(--primary-color);
+    color: white;
+}
+
+.parse-button:not(:disabled):hover {
+    background: var(--primary-hover);
+}
+
+.button-icon {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Loading Spinner */
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-spinner {
+    animation: spin 1s linear infinite;
+}
+
+/* Footer Styles */
+.footer {
+    text-align: center;
+    padding: 1.5rem;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+/* Utility Classes */
+.hidden {
+    display: none !important;
+}

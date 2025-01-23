@@ -1,71 +1,65 @@
-let selectedFile = null;
-
 document.addEventListener('DOMContentLoaded', function() {
-    const fileInput = document.getElementById('resume');
-    const fileName = document.getElementById('file-name');
-    const signupButton = document.getElementById('signup-button');
-    const closeButton = document.getElementById('close-signup');
+    // Get form and buttons
+    const signupForm = document.querySelector('.signup-form');
+    const returnButton = document.getElementById('return-to-login');
 
-    fileInput.addEventListener('change', function(e) {
-        selectedFile = e.target.files[0];
-        if (selectedFile) {
-            fileName.textContent = selectedFile.name;
-        }
+    // Add form submit handler
+    signupForm?.addEventListener('submit', async function(e) {
+        e.preventDefault(); // Prevent form from submitting normally
+        await handleSignup(e);
     });
 
-    signupButton.addEventListener('click', handleSignup);
-    closeButton.addEventListener('click', closeSignupWindow);
+    // Add return to login handler
+    returnButton?.addEventListener('click', function() {
+        window.close();
+    });
 });
 
-async function handleSignup() {
+async function handleSignup(e) {
+    e.preventDefault();
+    
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
-    const statusElement = document.getElementById('status');
 
-    if (!email || !password || !selectedFile) {
-        showStatus('Please fill in all fields and upload a resume', 'error');
+    if (!email || !password) {
+        showStatus('Please fill in all fields', 'error');
         return;
     }
 
     try {
-        showStatus('Processing signup...', 'processing');
+        showStatus('Creating your account...', 'processing');
         
         // Get existing users
         const result = await chrome.storage.local.get(['users']);
         const users = result.users || {};
         
-        // Check if user already exists
         if (users[email]) {
             showStatus('Email already registered', 'error');
             return;
         }
 
-        const resumeContent = await readFileContent(selectedFile);
-        const response = await chrome.runtime.sendMessage({
-            action: "parseResume",
-            content: resumeContent
-        });
-
-        if (response.error) {
-            throw new Error(response.error);
-        }
-
-        // Hash password
-        const hashedPassword = btoa(password); // Using same hash method as login
-
-        // Create new user
+        const hashedPassword = btoa(password);
         users[email] = {
             password: hashedPassword,
-            resumeData: response.resumeData
+            resumeData: null // Initialize with null, will be updated later
         };
 
-        // Store updated users
-        await chrome.storage.local.set({ 'users': users });
-        console.log('User registered:', email); // Debug log
-        console.log('Updated users:', users); // Debug log
+        await chrome.storage.local.set({ 
+            'users': users,
+            'userData': { email, resumeData: null }
+        });
+        
+        showStatus('Account created successfully! Please add your resume.', 'success');
 
-        showStatus('Account created successfully!', 'success');
-        setTimeout(() => window.close(), 1500);
+        // Open resume update window
+        chrome.windows.create({
+            url: chrome.runtime.getURL('resume-update.html'),
+            type: 'popup',
+            width: 600,
+            height: 800,
+            left: Math.round((screen.width - 600) / 2),
+            top: Math.round((screen.height - 800) / 2)
+        });
 
     } catch (error) {
         console.error('Signup error:', error);
@@ -73,32 +67,29 @@ async function handleSignup() {
     }
 }
 
-function readFileContent(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result);
-        reader.onerror = (e) => reject(new Error('Failed to read file'));
-        reader.readAsText(file);
-    });
-}
-
-async function hashPassword(password) {
-    // In a real application, use a proper hashing algorithm
-    // This is just for demonstration
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password);
-    const hash = await crypto.subtle.digest('SHA-256', data);
-    return Array.from(new Uint8Array(hash))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-}
-
 function showStatus(message, type) {
-    const statusElement = document.getElementById('status');
-    statusElement.textContent = message;
-    statusElement.className = `status ${type}`;
-}
+    const statusContainer = document.createElement('div');
+    statusContainer.className = `status-message ${type}`;
+    statusContainer.innerHTML = `
+        <div class="status-content">
+            ${type === 'processing' ? '<div class="loading-spinner"></div>' : ''}
+            <span>${message}</span>
+        </div>
+    `;
 
-function closeSignupWindow() {
-    window.close();
+    // Remove any existing status messages
+    const existingStatus = document.querySelector('.status-message');
+    if (existingStatus) {
+        existingStatus.remove();
+    }
+
+    document.body.appendChild(statusContainer);
+
+    if (type !== 'processing') {
+        setTimeout(() => {
+            statusContainer.remove();
+        }, 3000);
+    } else {
+        return statusContainer;
+    }
 }

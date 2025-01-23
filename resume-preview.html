@@ -1,66 +1,135 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Review Resume Data - LinkedIn Genie</title>
-    <link rel="stylesheet" type="text/css" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <title>Review Resume - LinkedIn Genie</title>
+    <link rel="stylesheet" type="text/css" href="resume-preview.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>Review Resume Data</h1>
-            <p class="subtitle">Please verify and edit if needed</p>
+        <header class="app-header">
+            <div class="header-content">
+                <div class="logo">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <h1>LinkedIn Genie</h1>
+                </div>
+                <button id="back-button" class="back-button">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                    Back
+                </button>
+            </div>
         </header>
 
-        <main>
-            <form id="resume-form" class="resume-form">
-                <div class="form-section">
-                    <h3>Basic Information</h3>
-                    <div class="form-group">
-                        <label for="name">Full Name</label>
-                        <input type="text" id="name" name="name" class="form-input">
+        <main class="main-content">
+            <div class="page-header">
+                <h2>Review Your Resume Data</h2>
+                <p>Please verify and edit your resume information below</p>
+            </div>
+
+            <div class="resume-card">
+                <!-- Basic Information Section -->
+                <div class="card-section">
+                    <div class="section-header">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        <h3>Basic Information</h3>
                     </div>
                     <div class="form-group">
-                        <label for="title">Current Title</label>
-                        <input type="text" id="title" name="title" class="form-input">
+                        <label>Full Name</label>
+                        <input type="text" id="name" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Current Title</label>
+                        <input type="text" id="title" class="form-input">
                     </div>
                 </div>
 
-                <div class="form-section">
-                    <h3>Skills</h3>
-                    <div class="form-group">
-                        <label>Skills (comma-separated)</label>
-                        <textarea id="skills" name="skills" class="form-input" rows="3"></textarea>
+                <!-- Skills Section -->
+                <div class="card-section">
+                    <div class="section-header">
+                        <h3>Skills</h3>
+                    </div>
+                    <div id="skills-container" class="skills-container"></div>
+                    <div class="skill-input-group">
+                        <input type="text" id="new-skill" class="form-input" placeholder="Add a skill">
+                        <button id="add-skill" class="button-primary">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M12 5v14M5 12h14"/>
+                            </svg>
+                            Add
+                        </button>
                     </div>
                 </div>
 
-                <div class="form-section">
-                    <h3>Experience</h3>
-                    <div id="experience-container"></div>
-                    <button type="button" id="add-experience" class="secondary-button">Add Experience</button>
+                <!-- Experience Section -->
+                <div class="card-section">
+                    <div class="section-header">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                        </svg>
+                        <h3>Experience</h3>
+                    </div>
+                    <div id="experience-container" class="experience-container"></div>
+                    <button id="add-experience" class="button-primary add-button">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M12 5v14M5 12h14"/>
+                        </svg>
+                        Add Experience
+                    </button>
                 </div>
 
-                <div class="form-section">
-                    <h3>Education</h3>
-                    <div class="form-group">
-                        <label for="degree">Degree</label>
-                        <input type="text" id="degree" name="education.degree" class="form-input">
+                <!-- Education Section -->
+                <div class="card-section">
+                    <div class="section-header">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                            <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+                        </svg>
+                        <h3>Education</h3>
                     </div>
-                    <div class="form-group">
-                        <label for="field">Field of Study</label>
-                        <input type="text" id="field" name="education.field" class="form-input">
+                    <div id="education-container">
+                        <div class="education-entry">
+                            <div class="form-group">
+                                <label>Degree</label>
+                                <input type="text" id="degree" class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label>Field of Study</label>
+                                <input type="text" id="field" class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label>School</label>
+                                <input type="text" id="school" class="form-input">
+                            </div>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="school">School</label>
-                        <input type="text" id="school" name="education.school" class="form-input">
-                    </div>
+                    <button id="add-education" class="button-primary add-button">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M12 5v14M5 12h14"/>
+                        </svg>
+                        Add Education
+                    </button>
                 </div>
 
-                <div class="button-group">
-                    <button type="submit" class="primary-button">Save Changes</button>
-                    <button type="button" id="cancel" class="secondary-button">Cancel</button>
+                <!-- Action Buttons -->
+                <div class="card-footer">
+                    <button id="cancel" class="button-secondary">Cancel</button>
+                    <button id="save" class="button-primary">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                            <polyline points="17 21 17 13 7 13 7 21"/>
+                            <polyline points="7 3 7 8 15 8"/>
+                        </svg>
+                        Save Changes
+                    </button>
                 </div>
-            </form>
+            </div>
         </main>
     </div>
     <script src="resume-preview.js"></script>

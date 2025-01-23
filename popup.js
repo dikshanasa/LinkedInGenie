@@ -1,84 +1,124 @@
 let profileData = null;
 let selectedIceBreaker = null;
+let selectedGoal = null;
 
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('Popup DOM loaded');
     
-    // Check authentication state
+    // Initial check for logged-in state
     const result = await chrome.storage.local.get('userData');
     if (result.userData) {
-        document.getElementById('auth-section').classList.add('hidden');
-        document.getElementById('main-app').classList.remove('hidden');
+        document.getElementById('auth-section')?.classList.add('hidden');
+        document.getElementById('main-app')?.classList.remove('hidden');
+        document.getElementById('logout')?.classList.remove('hidden');
         updateResumeDisplay(result.userData.resumeData);
-    } else {
-        document.getElementById('auth-section').classList.remove('hidden');
-        document.getElementById('main-app').classList.add('hidden');
     }
 
-    // Add event listeners
-    document.getElementById('login-button')?.addEventListener('click', handleLogin);
-    document.getElementById('show-signup')?.addEventListener('click', handleSignupClick);
-    document.getElementById('logout')?.addEventListener('click', handleLogout);
-    document.getElementById('capture-profile')?.addEventListener('click', captureProfile);
-    document.getElementById('message-goal')?.addEventListener('change', generateIceBreakers);
-    document.getElementById('generate-message')?.addEventListener('click', generateMessage);
-    document.getElementById('update-resume')?.addEventListener('click', openResumeUpdateWindow);
+    // Initialize UI and setup basic event listeners
+    await initializeUI();
+    setupEventListeners();
+
+    // Login button click handler
+    const loginButton = document.getElementById('login-button');
+    loginButton?.addEventListener('click', async function(e) {
+        e.preventDefault();
+        
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+
+        if (!email || !password) {
+            showStatus('Please enter both email and password', 'error');
+            return;
+        }
+
+        try {
+            const result = await chrome.storage.local.get(['users']);
+            const users = result.users || {};
+            const hashedPassword = btoa(password);
+            const user = users[email];
+
+            if (user && user.password === hashedPassword) {
+                const userData = {
+                    email,
+                    resumeData: user.resumeData
+                };
+                
+                await chrome.storage.local.set({ 'userData': userData });
+                
+                // Update UI elements
+                document.getElementById('auth-section').classList.add('hidden');
+                document.getElementById('main-app').classList.remove('hidden');
+                document.getElementById('logout').classList.remove('hidden');
+                
+                if (user.resumeData) {
+                    updateResumeDisplay(user.resumeData);
+                }
+                
+                showStatus('Login successful!', 'success');
+            } else {
+                showStatus('Invalid email or password', 'error');
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            showStatus('Login failed. Please try again.', 'error');
+        }
+    });
+    // Add this after the DOMContentLoaded event listener
+chrome.storage.onChanged.addListener(function(changes, namespace) {
+    if (namespace === 'local' && changes.finalResumeData) {
+        const userData = {
+            email: changes.finalResumeData.newValue.email,
+            resumeData: changes.finalResumeData.newValue
+        };
+        
+        // Update storage with new resume data
+        chrome.storage.local.get(['userData'], function(result) {
+            if (result.userData) {
+                result.userData.resumeData = changes.finalResumeData.newValue;
+                chrome.storage.local.set({ 'userData': result.userData }, function() {
+                    // Update the display
+                    updateResumeDisplay(changes.finalResumeData.newValue);
+                });
+            }
+        });
+    }
 });
 
-async function handleLogin() {
-    const email = document.getElementById('login-email').value;
-    const password = document.getElementById('login-password').value;
 
-    if (!email || !password) {
-        showStatus('Please enter both email and password', 'error');
-        return;
-    }
+    // Add logout button handler
+    const logoutButton = document.getElementById('logout');
+    logoutButton?.addEventListener('click', handleLogout);
 
-    try {
-        const result = await chrome.storage.local.get(['users']);
-        const users = result.users || {};
-        const user = users[email];
-        const hashedPassword = btoa(password);
-
-        if (user && user.password === hashedPassword) {
-            const userData = {
-                email,
-                resumeData: user.resumeData
-            };
-            
-            await chrome.storage.local.set({ 'userData': userData });
-            document.getElementById('auth-section').classList.add('hidden');
-            document.getElementById('main-app').classList.remove('hidden');
-            updateResumeDisplay(user.resumeData);
-            showStatus('Login successful!', 'success');
-        } else {
-            showStatus('Invalid email or password', 'error');
-        }
-    } catch (error) {
-        console.error('Login error:', error);
-        showStatus('Login failed. Please try again.', 'error');
-    }
-}
-
-function handleSignupClick(e) {
-    e.preventDefault();
-    chrome.windows.create({
-        url: chrome.runtime.getURL('signup.html'),
-        type: 'popup',
-        width: 400,
-        height: 600,
-        left: Math.round((screen.width - 400) / 2),
-        top: Math.round((screen.height - 600) / 2)
+    // Add sign-up button handler
+    const signupButton = document.getElementById('show-signup');
+    signupButton?.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        chrome.windows.create({
+            url: chrome.runtime.getURL('signup.html'),
+            type: 'popup',
+            width: 400,
+            height: 600,
+            left: Math.round((screen.width - 400) / 2),
+            top: Math.round((screen.height - 600) / 2)
+        });
     });
-}
+});
 
+// Logout handler function
 async function handleLogout() {
     try {
         await chrome.storage.local.remove('userData');
+        
+        // Update UI elements
         document.getElementById('auth-section').classList.remove('hidden');
         document.getElementById('main-app').classList.add('hidden');
+        document.getElementById('logout').classList.add('hidden');
+        
+        // Clear any input fields
         document.getElementById('login-email').value = '';
         document.getElementById('login-password').value = '';
+        
         showStatus('Logged out successfully', 'success');
     } catch (error) {
         console.error('Logout error:', error);
@@ -86,50 +126,135 @@ async function handleLogout() {
     }
 }
 
-function openResumeUpdateWindow() {
-    chrome.windows.create({
-        url: chrome.runtime.getURL('resume-update.html'),
-        type: 'popup',
-        width: 400,
-        height: 600,
-        left: Math.round((screen.width - 400) / 2),
-        top: Math.round((screen.height - 600) / 2)
+
+// Logout handler function
+async function handleLogout() {
+    try {
+        await chrome.storage.local.remove('userData');
+        
+        // Update UI elements
+        document.getElementById('auth-section').classList.remove('hidden');
+        document.getElementById('main-app').classList.add('hidden');
+        document.getElementById('logout').classList.add('hidden'); // Hide logout button
+        
+        // Clear any input fields
+        document.getElementById('login-email').value = '';
+        document.getElementById('login-password').value = '';
+        
+        showStatus('Logged out successfully', 'success');
+    } catch (error) {
+        console.error('Logout error:', error);
+        showStatus('Error logging out', 'error');
+    }
+}
+
+
+async function initializeUI() {
+    try {
+        const result = await chrome.storage.local.get('userData');
+        if (result.userData) {
+            document.getElementById('auth-section')?.classList.add('hidden');
+            document.getElementById('main-app')?.classList.remove('hidden');
+            updateResumeDisplay(result.userData.resumeData);
+        }
+
+        // Initialize collapsible sections
+        const toggleButtons = document.querySelectorAll('.section-toggle');
+        toggleButtons.forEach(button => {
+            const sectionId = button.getAttribute('data-section');
+            const content = document.getElementById(sectionId);
+            
+            // Set initial state
+            const isExpanded = button.getAttribute('aria-expanded') === 'true';
+            if (content) {
+                content.style.display = isExpanded ? 'block' : 'none';
+            }
+            
+            button.addEventListener('click', () => toggleSection(button, content));
+        });
+
+    } catch (error) {
+        console.error('UI initialization error:', error);
+        showStatus('Failed to initialize UI', 'error');
+    }
+}
+
+function setupEventListeners() {
+    document.getElementById('capture-profile')?.addEventListener('click', captureProfile);
+    document.getElementById('generate-message')?.addEventListener('click', generateMessage);
+    document.getElementById('update-resume')?.addEventListener('click', openResumeUpdateWindow);
+    document.getElementById('logout')?.addEventListener('click', handleLogout);
+
+    // Goal options
+    document.querySelectorAll('.goal-option').forEach(option => {
+        option.addEventListener('click', (e) => handleGoalSelection(e));
     });
 }
 
+function toggleSection(button, content) {
+    const isExpanded = button.getAttribute('aria-expanded') === 'true';
+    button.setAttribute('aria-expanded', !isExpanded);
+    
+    const chevron = button.querySelector('.chevron');
+    if (chevron) {
+        chevron.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(180deg)';
+    }
+    
+    if (content) {
+        content.style.display = isExpanded ? 'none' : 'block';
+        if (!isExpanded) {
+            content.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+}
 function updateResumeDisplay(resumeData) {
     if (!resumeData) return;
 
-    const resumeInfo = document.getElementById('resume-info');
-    resumeInfo.innerHTML = `
-        <div class="resume-section">
-            <h4>Current Role</h4>
-            <p>${resumeData.title || 'Not specified'}</p>
-        </div>
-        <div class="resume-section">
-            <h4>Skills</h4>
-            <p>${resumeData.skills.join(', ') || 'No skills listed'}</p>
-        </div>
-        <div class="resume-section">
-            <h4>Experience</h4>
-            ${resumeData.experience.map(exp => `
-                <div class="experience-item">
-                    <p><strong>${exp.title}</strong> at ${exp.company}</p>
-                    <p>${exp.duration}</p>
-                    <p>${exp.description}</p>
+    // Current Role Card
+    const currentRoleContent = document.getElementById('current-role-content');
+    if (currentRoleContent) {
+        currentRoleContent.innerHTML = `
+            <div class="grid-2">
+                <div class="form-field">
+                    <label>Role Title</label>
+                    <div class="field-value">${resumeData.title || 'Not specified'}</div>
                 </div>
-            `).join('')}
-        </div>
-    `;
+                <div class="form-field">
+                    <label>Company</label>
+                    <div class="field-value">${resumeData.experience?.[0]?.company || 'Not specified'}</div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Skills Card
+    const skillsContent = document.getElementById('skills-content');
+    if (skillsContent && resumeData.skills) {
+        skillsContent.innerHTML = resumeData.skills
+            .map(skill => `<span class="skill-tag">${skill}</span>`)
+            .join('');
+    }
+
+    // Experience Timeline
+    const experienceContent = document.getElementById('experience-content');
+    if (experienceContent && resumeData.experience) {
+        experienceContent.innerHTML = resumeData.experience
+            .map(exp => `
+                <div class="timeline-entry">
+                    <div class="entry-header">
+                        <h4 class="entry-title">${exp.title}</h4>
+                        <span class="entry-duration">${exp.duration}</span>
+                    </div>
+                    <div class="entry-company">${exp.company}</div>
+                    <p class="entry-description">${exp.description}</p>
+                </div>
+            `)
+            .join('');
+    }
 }
 
 async function captureProfile() {
-    console.log('Starting profile capture...');
-    const statusElement = document.getElementById('status');
-    const profileInfo = document.getElementById('profile-info');
-
     try {
-        // Check if we're on LinkedIn
         const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
         if (!tab?.url?.includes('linkedin.com')) {
             throw new Error('Please navigate to a LinkedIn profile page');
@@ -137,124 +262,136 @@ async function captureProfile() {
 
         showStatus('Capturing profile...', 'processing');
 
-        // Inject content script
         try {
             await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
                 files: ['content.js']
             });
         } catch (error) {
-            console.error('Script injection error:', error);
-            throw new Error('Failed to initialize profile capture');
+            throw new Error('Failed to inject content script: ' + error.message);
         }
 
-        // Capture profile content
         const response = await new Promise((resolve, reject) => {
             chrome.tabs.sendMessage(tab.id, { action: "captureProfile" }, (result) => {
                 if (chrome.runtime.lastError) {
                     reject(new Error(chrome.runtime.lastError.message));
-                } else if (!result) {
-                    reject(new Error('No response from page'));
-                } else {
-                    resolve(result);
+                    return;
                 }
+                if (!result) {
+                    reject(new Error('No response from content script'));
+                    return;
+                }
+                resolve(result);
             });
         });
 
-        if (!response?.pageContent) {
+        if (!response.pageContent) {
             throw new Error('No profile content captured');
         }
 
         showStatus('Processing profile data...', 'processing');
-        
-        // Process the captured data
-        profileData = await processProfileData(response.pageContent);
-        
-        if (!profileData) {
-            throw new Error('Failed to process profile data');
-        }
 
-        // Display the processed data
+        const processedData = await new Promise((resolve, reject) => {
+            chrome.runtime.sendMessage({
+                action: "processProfileData",
+                content: response.pageContent
+            }, (response) => {
+                if (chrome.runtime.lastError) {
+                    reject(new Error(chrome.runtime.lastError.message));
+                    return;
+                }
+                if (response.error) {
+                    reject(new Error(response.error));
+                    return;
+                }
+                resolve(response.profileData);
+            });
+        });
+
+        profileData = processedData;
         displayProfileInfo(profileData);
-        document.getElementById('message-options').classList.remove('hidden');
         showStatus('Profile captured successfully!', 'success');
+
+        // Expand message goal section
+        const messageToggle = document.querySelector('[data-section="message-section"]');
+        if (messageToggle) {
+            messageToggle.click();
+        }
 
     } catch (error) {
         console.error('Profile capture error:', error);
         showStatus(error.message || 'Failed to capture profile', 'error');
+        const profileInfo = document.getElementById('profile-info');
         if (profileInfo) {
             profileInfo.classList.add('hidden');
         }
     }
 }
 
-async function processProfileData(content) {
-    try {
-        // Add a Promise wrapper around the message sending
-        const response = await new Promise((resolve, reject) => {
-            chrome.runtime.sendMessage({
-                action: "processProfileData",
-                content: content
-            }, function(response) {
-                // Check for runtime error immediately
-                const lastError = chrome.runtime.lastError;
-                if (lastError) {
-                    reject(new Error(lastError.message));
-                    return;
-                }
-                resolve(response);
-            });
-        });
+function displayProfileInfo(data) {
+    if (!data) return;
 
-        // Validate response
-        if (!response || !response.profileData) {
-            throw new Error('Invalid response from background script');
-        }
-
-        return response.profileData;
-
-    } catch (error) {
-        console.error('Profile processing error:', error);
-        throw new Error(`Failed to process profile data: ${error.message}`);
-    }
-}
-
-
-
-
-function displayProfileInfo(profileData) {
     const profileInfo = document.getElementById('profile-info');
-    if (!profileInfo || !profileData) return;
+    if (!profileInfo) return;
 
     profileInfo.innerHTML = `
-        <div class="profile-section">
-            <h4>${profileData.name || 'Name not available'}</h4>
-            <p><strong>Title:</strong> ${profileData.title || 'Title not available'}</p>
-            <p><strong>Company:</strong> ${profileData.company || 'Company not available'}</p>
-            <p><strong>Skills:</strong> ${profileData.skills ? profileData.skills.join(', ') : 'No skills listed'}</p>
-            <p><strong>About:</strong> ${profileData.about ? 
-                (profileData.about.length > 200 ? profileData.about.substring(0, 200) + '...' : profileData.about) 
-                : 'No about section available'}</p>
-            ${profileData.recentPost ? 
-                `<p><strong>Recent Activity:</strong> ${profileData.recentPost.substring(0, 100)}...</p>` 
-                : ''}
+        <div class="info-card">
+            <div class="card-header">
+                <h4>${data.name || 'Name not available'}</h4>
+            </div>
+            <div class="card-content">
+                <div class="profile-field">
+                    <label>Current Role</label>
+                    <div>${data.title || 'Not available'}</div>
+                </div>
+                <div class="profile-field">
+                    <label>Company</label>
+                    <div>${data.company || 'Not available'}</div>
+                </div>
+                <div class="profile-field">
+                    <label>Skills</label>
+                    <div class="skills-container">
+                        ${data.skills ? data.skills.map(skill => 
+                            `<span class="skill-tag">${skill}</span>`
+                        ).join('') : 'No skills listed'}
+                    </div>
+                </div>
+                ${data.about ? `
+                    <div class="profile-field">
+                        <label>About</label>
+                        <div class="about-content">${data.about.substring(0, 200)}...</div>
+                    </div>
+                ` : ''}
+            </div>
         </div>
     `;
+    
     profileInfo.classList.remove('hidden');
+}
+function handleGoalSelection(event) {
+    const goalButton = event.currentTarget;
+    selectedGoal = goalButton.getAttribute('data-goal');
+    
+    // Update UI
+    document.querySelectorAll('.goal-option').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+    goalButton.classList.add('selected');
+    
+    // Generate ice breakers if profile is captured
+    if (profileData) {
+        generateIceBreakers();
+    }
 }
 
 async function generateIceBreakers() {
-    if (!profileData) {
-        showStatus('Please capture a LinkedIn profile first', 'error');
+    if (!profileData || !selectedGoal) {
+        showStatus('Please capture a profile and select a message goal first', 'error');
         return;
     }
 
-    const goal = document.getElementById('message-goal').value;
-    if (!goal) {
-        showStatus('Please select a message goal', 'error');
-        return;
-    }
-
+    const iceBreakersSection = document.getElementById('ice-breakers');
+    
     try {
         const result = await chrome.storage.local.get('userData');
         const resumeData = result.userData?.resumeData;
@@ -265,21 +402,32 @@ async function generateIceBreakers() {
 
         showStatus('Generating ice breakers...', 'processing');
 
-        const response = await chrome.runtime.sendMessage({
-            action: "generateIceBreakers",
-            data: {
-                profileData: profileData,
-                resumeData: resumeData,
-                goal: goal
-            }
+        const response = await new Promise((resolve, reject) => {
+            chrome.runtime.sendMessage({
+                action: "generateIceBreakers",
+                data: {
+                    profileData: profileData,
+                    resumeData: resumeData,
+                    goal: selectedGoal
+                }
+            }, (response) => {
+                if (chrome.runtime.lastError) {
+                    reject(new Error(chrome.runtime.lastError.message));
+                    return;
+                }
+                if (response.error) {
+                    reject(new Error(response.error));
+                    return;
+                }
+                resolve(response.iceBreakers);
+            });
         });
 
-        if (response.error) {
-            throw new Error(response.error);
-        }
-
-        displayIceBreakers(response.iceBreakers);
+        displayIceBreakers(response);
         showStatus('Ice breakers generated!', 'success');
+        
+        // Scroll to ice breakers section
+        iceBreakersSection?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } catch (error) {
         console.error('Ice breaker generation error:', error);
         showStatus(error.message || 'Failed to generate ice breakers', 'error');
@@ -288,56 +436,73 @@ async function generateIceBreakers() {
 
 function displayIceBreakers(iceBreakers) {
     const container = document.getElementById('ice-breakers');
-    container.innerHTML = '<h3>Ice Breaker Options</h3>';
-    
-    const categoriesContainer = document.createElement('div');
-    categoriesContainer.className = 'ice-breakers-container';
+    if (!container) return;
 
-    Object.entries(iceBreakers).forEach(([category, options]) => {
-        const categorySection = document.createElement('div');
-        categorySection.className = 'ice-breaker-category';
-        
-        const categoryTitle = document.createElement('h4');
-        categoryTitle.textContent = category;
-        categorySection.appendChild(categoryTitle);
+    const iceBreakersContainer = container.querySelector('.ice-breakers-container');
+    if (!iceBreakersContainer) return;
 
-        const iceBreakersArray = Array.isArray(options) ? options : [options];
-        iceBreakersArray.forEach(option => {
-            const button = document.createElement('button');
-            button.textContent = option;
-            button.className = 'ice-breaker-btn';
-            button.addEventListener('click', () => selectIceBreaker(option, button));
-            categorySection.appendChild(button);
+    // Set up tab functionality
+    const tabs = container.querySelectorAll('.tab-button');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            displayCategoryIceBreakers(tab.dataset.category, iceBreakers);
         });
-
-        categoriesContainer.appendChild(categorySection);
     });
 
-    container.appendChild(categoriesContainer);
+    // Display initial category
+    displayCategoryIceBreakers('skills', iceBreakers);
     container.classList.remove('hidden');
-    document.getElementById('message-length-option').classList.remove('hidden');
 }
 
-function selectIceBreaker(iceBreaker, button) {
-    selectedIceBreaker = iceBreaker;
+function displayCategoryIceBreakers(category, iceBreakers) {
+    const container = document.querySelector('.ice-breakers-container');
+    if (!container) return;
+
+    const categoryMap = {
+        'skills': 'Skills & Experience',
+        'recent': 'Recent Activity',
+        'company': 'Company & Role'
+    };
+
+    const options = iceBreakers[categoryMap[category]] || [];
     
-    document.querySelectorAll('.ice-breaker-btn').forEach(btn => 
-        btn.classList.remove('selected')
-    );
-    
-    button.classList.add('selected');
+    container.innerHTML = options.map(option => `
+        <div class="ice-breaker-card" data-icebreaker="${option}">
+            <div class="ice-breaker-content">
+                ${option}
+            </div>
+            <div class="ice-breaker-footer">
+                <span>Click to select</span>
+                <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+            </div>
+        </div>
+    `).join('');
+
+    // Add click handlers
+    container.querySelectorAll('.ice-breaker-card').forEach(card => {
+        card.addEventListener('click', () => {
+            container.querySelectorAll('.ice-breaker-card').forEach(c => 
+                c.classList.remove('selected')
+            );
+            card.classList.add('selected');
+            selectedIceBreaker = card.dataset.icebreaker;
+        });
+    });
 }
 
 async function generateMessage() {
-    if (!profileData || !selectedIceBreaker) {
+    if (!profileData || !selectedIceBreaker || !selectedGoal) {
         showStatus('Please complete all steps before generating a message', 'error');
         return;
     }
 
-    const goal = document.getElementById('message-goal').value;
-    const length = document.getElementById('message-length').value;
-    const messageElement = document.getElementById('generated-message');
-
+    const messageSection = document.getElementById('generated-message');
+    const contentWrapper = messageSection?.querySelector('.message-content-wrapper');
+    
     try {
         const result = await chrome.storage.local.get('userData');
         const resumeData = result.userData?.resumeData;
@@ -346,82 +511,191 @@ async function generateMessage() {
             throw new Error('Resume data not found. Please update your resume.');
         }
 
-        showStatus('Generating message...', 'processing');
+        // Show loading state with exponential backoff
+        let retryCount = 0;
+        const maxRetries = 3;
+        let delay = 1000;
 
-        const response = await chrome.runtime.sendMessage({
-            action: "generateMessage",
-            data: {
-                profileData: profileData,
-                resumeData: resumeData,
-                iceBreaker: selectedIceBreaker,
-                goal: goal,
-                length: length
+        while (retryCount < maxRetries) {
+            try {
+                messageSection?.classList.remove('hidden');
+                if (contentWrapper) {
+                    contentWrapper.innerHTML = `
+                        <div class="loading-state">
+                            <span class="loading-spinner"></span>
+                            <span>Generating your message...</span>
+                        </div>
+                    `;
+                }
+
+                const response = await new Promise((resolve, reject) => {
+                    chrome.runtime.sendMessage({
+                        action: "generateMessage",
+                        data: {
+                            profileData: profileData,
+                            resumeData: resumeData,
+                            iceBreaker: selectedIceBreaker,
+                            goal: selectedGoal,
+                            length: 'medium'
+                        }
+                    }, (response) => {
+                        if (chrome.runtime.lastError) {
+                            reject(new Error(chrome.runtime.lastError.message));
+                            return;
+                        }
+                        if (response.error) {
+                            reject(new Error(response.error));
+                            return;
+                        }
+                        resolve(response.message);
+                    });
+                });
+
+                displayGeneratedMessage(response);
+                showStatus('Message generated successfully!', 'success');
+                break;
+
+            } catch (error) {
+                if (error.message.includes('429')) {
+                    retryCount++;
+                    if (retryCount === maxRetries) {
+                        throw new Error('Rate limit exceeded. Please try again later.');
+                    }
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2;
+                    continue;
+                }
+                throw error;
             }
-        });
-
-        if (response.error) {
-            throw new Error(response.error);
         }
 
-        messageElement.innerHTML = `
-            <div class="message-container">
-                <div class="message-content">${response.message}</div>
-                <button id="copy-message" class="copy-button">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                    </svg>
-                    Copy Message
-                </button>
-            </div>`;
-        messageElement.classList.remove('hidden');
-        
-        document.getElementById('copy-message').addEventListener('click', copyMessageToClipboard);
-        showStatus('Message generated successfully!', 'success');
     } catch (error) {
         console.error('Message generation error:', error);
+        if (contentWrapper) {
+            contentWrapper.innerHTML = `
+                <div class="error-state">
+                    ${error.message || 'Failed to generate message'}
+                </div>
+            `;
+        }
         showStatus(error.message || 'Failed to generate message', 'error');
     }
 }
+async function openResumeUpdateWindow() {
+    try {
+        const width = 600;
+        const height = 800;
+        const left = Math.round((screen.width - width) / 2);
+        const top = Math.round((screen.height - height) / 2);
+
+        chrome.windows.create({
+            url: chrome.runtime.getURL('resume-update.html'),
+            type: 'popup',
+            width: width,
+            height: height,
+            left: left,
+            top: top
+        });
+    } catch (error) {
+        console.error('Error opening resume update window:', error);
+        showStatus('Failed to open resume update window', 'error');
+    }
+}
+
+// Also add handleLogout function if missing
+async function handleLogout() {
+    try {
+        await chrome.storage.local.remove('userData');
+        document.getElementById('auth-section')?.classList.remove('hidden');
+        document.getElementById('main-app')?.classList.add('hidden');
+        showStatus('Logged out successfully', 'success');
+    } catch (error) {
+        console.error('Logout error:', error);
+        showStatus('Error logging out', 'error');
+    }
+}
+
+function displayGeneratedMessage(message) {
+    const messageSection = document.getElementById('generated-message');
+    if (!messageSection) return;
+
+    const contentElement = messageSection.querySelector('.message-content');
+    if (contentElement) {
+        contentElement.textContent = message;
+    }
+
+    // Ensure copy button is properly set up
+    const copyButton = document.getElementById('copy-message');
+    if (copyButton) {
+        copyButton.addEventListener('click', copyMessageToClipboard);
+    }
+
+    messageSection.classList.remove('hidden');
+    messageSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
 
 async function copyMessageToClipboard() {
-    const messageContent = document.querySelector('.message-content').textContent;
-    const copyButton = document.getElementById('copy-message');
+    const messageContent = document.querySelector('.message-content')?.textContent;
+    if (!messageContent) return;
 
+    const copyButton = document.getElementById('copy-message');
+    
     try {
         await navigator.clipboard.writeText(messageContent);
-        copyButton.innerHTML = `
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-            Copied!`;
-        copyButton.classList.add('copied');
         
-        setTimeout(() => {
+        if (copyButton) {
+            const originalContent = copyButton.innerHTML;
             copyButton.innerHTML = `
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                <svg class="icon copy-success" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M20 6L9 17l-5-5"/>
                 </svg>
-                Copy Message`;
-            copyButton.classList.remove('copied');
-        }, 2000);
-    } catch (err) {
-        console.error('Failed to copy message:', err);
+                Copied!
+            `;
+            copyButton.classList.add('copied');
+            
+            setTimeout(() => {
+                copyButton.innerHTML = originalContent;
+                copyButton.classList.remove('copied');
+            }, 2000);
+        }
+    } catch (error) {
+        console.error('Copy error:', error);
         showStatus('Failed to copy message', 'error');
     }
 }
+
 
 function showStatus(message, type) {
     const statusElement = document.getElementById('status');
     if (!statusElement) return;
     
-    statusElement.textContent = message;
+    statusElement.innerHTML = `
+        <div class="status-icon">
+            ${type === 'success' ? `
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M20 6L9 17l-5-5"/>
+                </svg>
+            ` : type === 'error' ? `
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="15" y1="9" x2="9" y2="15"/>
+                    <line x1="9" y1="9" x2="15" y2="15"/>
+                </svg>
+            ` : `
+                <svg class="icon loading-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 2a10 10 0 0 1 10 10"/>
+                </svg>
+            `}
+        </div>
+        <span>${message}</span>
+    `;
+    
     statusElement.className = `status ${type}`;
     
     if (type !== 'processing') {
         setTimeout(() => {
-            statusElement.textContent = '';
+            statusElement.innerHTML = '';
             statusElement.className = 'status';
         }, 3000);
     }

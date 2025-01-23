@@ -2,78 +2,79 @@
 <html>
 <head>
     <title>Update Resume - LinkedIn Genie</title>
-    <link rel="stylesheet" type="text/css" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <script type="module" src="pdf-init.js"></script>
+    <link rel="stylesheet" type="text/css" href="resume-update.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="pdf.mjs" type="module"></script>
+    <script src="pdf-init.js" type="module"></script>
+
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>Update Resume</h1>
-            <p class="subtitle">Upload your new resume</p>
-        </header>
+        <div class="background-effects">
+            <div class="blob blob-1"></div>
+            <div class="blob blob-2"></div>
+        </div>
 
-        <main>
-            <div class="resume-upload-form">
-                <div class="form-group">
-                    <label for="resume">Choose Resume File</label>
-                    <div class="resume-upload">
-                        <input type="file" id="resume" accept=".pdf,.doc,.docx,.txt" class="file-input">
-                        <label for="resume" class="upload-label">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="17 8 12 3 7 8"/>
-                                <line x1="12" y1="3" x2="12" y2="15"/>
-                            </svg>
-                            Select File
-                        </label>
-                    </div>
-                    <p id="file-name" class="file-name"></p>
+        <div class="content-wrapper">
+            <div class="header-section">
+                <div class="logo-container">
+                    <svg class="icon-large" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <h1>LinkedIn Genie</h1>
                 </div>
-
-                <div id="status" class="status"></div>
-
-                <div id="parsed-content" class="parsed-content hidden">
-                    <h3>Review Resume Information</h3>
-                    <form id="resume-edit-form" class="resume-edit-form">
-                        <div class="form-group">
-                            <label for="edit-name">Name:</label>
-                            <input type="text" id="edit-name" class="form-input" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="edit-title">Current Title:</label>
-                            <input type="text" id="edit-title" class="form-input" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="edit-skills">Skills (comma-separated):</label>
-                            <textarea id="edit-skills" class="form-input" required></textarea>
-                        </div>
-
-                        <div class="form-section">
-                            <h4>Experience</h4>
-                            <div id="experience-container"></div>
-                            <button type="button" id="add-experience" class="secondary-button">Add Experience</button>
-                        </div>
-
-                        <div class="form-section">
-                            <h4>Education</h4>
-                            <div id="education-container"></div>
-                            <button type="button" id="add-education" class="secondary-button">Add Education</button>
-                        </div>
-
-                        <div class="button-group">
-                            <button type="submit" id="save-changes" class="primary-button">Save Changes</button>
-                            <button type="button" id="cancel-edit" class="secondary-button">Cancel</button>
-                        </div>
-                    </form>
-                </div>
-
-                <button id="parse-resume" class="primary-button">Parse Resume</button>
+                <h2>Update Your Resume</h2>
+                <p class="subtitle">Easily upload and review your resume details</p>
             </div>
-        </main>
+
+            <div class="upload-card">
+                <div class="card-header">
+                    <h3>Resume Upload</h3>
+                    <p>Upload your resume to automatically extract your professional details</p>
+                </div>
+
+                <div class="card-content">
+                    <div class="upload-section">
+                        <div id="upload-area" class="upload-area">
+                            <input type="file" id="resume" accept=".pdf,.doc,.docx,.txt" class="file-input">
+                            <div class="upload-placeholder">
+                                <div class="upload-icon-wrapper">
+                                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="17 8 12 3 7 8"></polyline>
+                                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                                    </svg>
+                                </div>
+                                <p class="upload-text">Drop your resume here</p>
+                                <p class="upload-subtext">or click to browse your files</p>
+                                <p class="upload-hint">Supports PDF, DOC, DOCX, TXT (Max 5MB)</p>
+                            </div>
+                        </div>
+
+                        <div id="file-preview" class="file-preview hidden">
+                            <!-- File preview will be inserted here -->
+                        </div>
+
+                        <div id="parse-status" class="parse-status hidden">
+                            <!-- Status messages will be inserted here -->
+                        </div>
+                    </div>
+
+                    <button id="parse-resume" class="parse-button" disabled>
+                        <span class="button-text">Parse Resume</span>
+                        <svg class="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                            <polyline points="12 5 19 12 12 19"></polyline>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <footer class="footer">
+            <p>© 2024 LinkedIn Genie. All rights reserved.</p>
+        </footer>
     </div>
-    <script src="resume-update.js" defer></script>
+    <script src="resume-update.js"></script>
 </body>
 </html>

@@ -85,8 +85,22 @@ async function processProfileData(content) {
   const apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
   
   try {
-    let profileData = typeof content === 'string' ? JSON.parse(content) : content;
+    // Log the raw content for debugging
+    console.log('Raw content received:', content);
+
+    // Handle the content whether it's a string or object
+    let profileData = content;
+    if (typeof content === 'string') {
+      try {
+        profileData = JSON.parse(content);
+      } catch (parseError) {
+        console.log('Content is not JSON, using as is');
+        // If it's not JSON, we'll use the string directly
+      }
+    }
     
+    console.log('Profile data to process:', profileData);
+
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -98,11 +112,11 @@ async function processProfileData(content) {
         messages: [
           {
             role: "system",
-            content: "Extract key information from LinkedIn profiles and return as valid JSON."
+            content: "Extract LinkedIn profile information and return only the requested JSON structure."
           },
           {
             role: "user",
-            content: `Extract the following information from this LinkedIn profile and return as a single JSON object:
+            content: `Extract these exact fields from the LinkedIn profile data and return as JSON:
             {
               "name": "Full Name",
               "title": "Current Title",
@@ -112,11 +126,11 @@ async function processProfileData(content) {
               "recentPost": "Most recent post or null"
             }
             
-            Profile data: ${JSON.stringify(profileData)}`
+            Profile data: ${typeof profileData === 'string' ? profileData : JSON.stringify(profileData)}`
           }
         ],
         max_tokens: 1000,
-        temperature: 0.2
+        temperature: 0.1
       })
     });
 
@@ -125,94 +139,131 @@ async function processProfileData(content) {
     }
 
     const data = await response.json();
-    return JSON.parse(data.choices[0].message.content);
+    
+    try {
+      // Extract JSON from response
+      const content = data.choices[0].message.content.trim();
+      const jsonStart = content.indexOf('{');
+      const jsonEnd = content.lastIndexOf('}') + 1;
+      const jsonString = content.slice(jsonStart, jsonEnd);
+      
+      const parsedContent = JSON.parse(jsonString);
+      console.log('Successfully parsed profile data:', parsedContent);
+      return parsedContent;
+    } catch (parseError) {
+      console.error('Error parsing AI response:', parseError);
+      console.log('Raw AI response:', data.choices[0].message.content);
+      throw new Error('Invalid response format from AI');
+    }
   } catch (error) {
     console.error('Error in AI processing:', error);
-    throw error;
+    throw new Error(`Failed to process profile data: ${error.message}`);
   }
 }
 
 
 
 
+
+
 async function parseResume(content) {
-    console.log('Parsing resume with AI...');
-    const apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
-    
-    try {
-        if (!content || typeof content !== 'string') {
-            throw new Error('Invalid resume content');
-        }
+  console.log('Parsing resume with AI...');
+  const apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
+  
+  try {
+      if (!content || typeof content !== 'string') {
+          throw new Error('Invalid resume content');
+      }
 
-        const cleanContent = content.trim()
-            .replace(/\s+/g, ' ')
-            .replace(/[\x00-\x1F\x7F-\x9F]/g, '')
-            .replace(/[^\x20-\x7E\n]/g, '');
+      const cleanContent = content.trim()
+          .replace(/\s+/g, ' ')
+          .replace(/[\x00-\x1F\x7F-\x9F]/g, '')
+          .replace(/[^\x20-\x7E\n]/g, '');
 
-        if (cleanContent.length === 0) {
-            throw new Error('Empty resume content');
-        }
+      if (cleanContent.length === 0) {
+          throw new Error('Empty resume content');
+      }
 
-        console.log('Cleaned content sample:', cleanContent.substring(0, 200));
-        
-        const truncatedContent = cleanContent.substring(0, 4000);
+      console.log('Cleaned content sample:', cleanContent.substring(0, 200));
+      
+      const truncatedContent = cleanContent.substring(0, 4000);
 
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${config.GROQ_API_KEY}`
-            },
-            body: JSON.stringify({
-                model: "mixtral-8x7b-32768",
-                messages: [
-                    {
-                        role: "system",
-                        content: `You are a precise resume parser. Extract ONLY the information that exists in this resume. Do not generate or assume any information. If a field cannot be found, mark it as 'Not specified'.`
-                    },
-                    {
-                        role: "user",
-                        content: `Extract ONLY the information that exists in this resume text. Return as JSON with these exact fields:
-                        {
-                            "name": "EXACT full name as written or 'Not specified'",
-                            "title": "EXACT current job title as written or 'Not specified'",
-                            "skills": ["EXACT skill 1", "EXACT skill 2"],
-                            "experience": [{
-                                "company": "EXACT company name",
-                                "title": "EXACT job title",
-                                "duration": "EXACT duration",
-                                "description": "EXACT brief description"
-                            }],
-                            "education": {
-                                "degree": "EXACT degree name",
-                                "field": "EXACT field of study",
-                                "school": "EXACT school name"
-                            }
-                        }
+      const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${config.GROQ_API_KEY}`
+          },
+          body: JSON.stringify({
+              model: "mixtral-8x7b-32768",
+              messages: [
+                  {
+                      role: "system",
+                      content: `You are a precise resume parser. Extract information from the resume and ensure experience entries are in chronological order with proper date formatting (MM.YY). For current positions, use 'Present' as the end date.`
+                  },
+                  {
+                      role: "user",
+                      content: `Parse this resume and return a JSON object with chronologically ordered experiences. If any field is not found, use "Not specified". Format:
+                      {
+                          "name": "Full name or 'Not specified'",
+                          "title": "Current job title or 'Not specified'",
+                          "skills": ["Skill 1", "Skill 2"] or [],
+                          "experience": [{
+                              "company": "Company name or 'Not specified'",
+                              "title": "Job title or 'Not specified'",
+                              "duration": "MM.YY - MM.YY or MM.YY - Present",
+                              "description": "Description or ''"
+                          }],
+                          "education": {
+                              "degree": "Degree or 'Not specified'",
+                              "field": "Field of study or 'Not specified'",
+                              "school": "School name or 'Not specified'"
+                          }
+                      }
 
-                        Resume content: ${truncatedContent}`
-                    }
-                ],
-                max_tokens: 1000,
-                temperature: 0.1
-            })
-        });
+                      Resume content: ${truncatedContent}`
+                  }
+              ],
+              max_tokens: 1000,
+              temperature: 0.1
+          })
+      });
 
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
+      if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-        const data = await response.json();
-        const parsedData = JSON.parse(data.choices[0].message.content);
-        console.log('Parsed resume data:', parsedData);
+      const data = await response.json();
+      const parsedData = JSON.parse(data.choices[0].message.content);
 
-        return parsedData;
+      // Sort experience entries by end date
+      if (parsedData.experience && Array.isArray(parsedData.experience)) {
+          parsedData.experience.sort((a, b) => {
+              const getEndDate = (duration) => {
+                  if (!duration || duration === 'Not specified') return new Date(0);
+                  const endPart = duration.split(' - ')[1];
+                  if (endPart.toLowerCase().includes('present')) {
+                      return new Date('2025-01-23'); // Current date
+                  }
+                  const [month, year] = endPart.split('.');
+                  return new Date(2000 + parseInt(year), parseInt(month) - 1);
+              };
 
-    } catch (error) {
-        console.error('Resume parsing error:', error);
-        throw new Error('Failed to parse resume: ' + (error.message || 'Unknown error'));
-    }
+              return getEndDate(b.duration) - getEndDate(a.duration);
+          });
+      }
+
+      console.log('Parsed and sorted resume data:', parsedData);
+      validateParsedData(parsedData);
+      
+      return parsedData;
+
+  } catch (error) {
+      console.error('Resume parsing error:', error);
+      throw new Error('Failed to parse resume: ' + (error.message || 'Unknown error'));
+  }
 }
+
 
 // Keep existing functions for ice breakers and message generation
 
@@ -227,45 +278,62 @@ function validateParsedData(data) {
     throw new Error('No data parsed from resume');
   }
 
-  if (defaultValues.includes(data.name)) {
-    throw new Error('Generic name detected - parsing failed');
+  // Log the parsed data for debugging
+  console.log('Validating parsed data:', data);
+
+  // Name validation - less strict
+  if (!data.name || defaultValues.includes(data.name)) {
+    console.warn('Warning: Generic or missing name');
+    data.name = 'Not specified';
   }
 
-  if (defaultValues.includes(data.title)) {
-    throw new Error('Generic title detected - parsing failed');
+  // Title validation - less strict
+  if (!data.title || defaultValues.includes(data.title)) {
+    console.warn('Warning: Generic or missing title');
+    data.title = 'Not specified';
   }
 
-  if (!data.name || data.name === 'Not specified') {
-    throw new Error('Could not extract name from resume');
+  // Skills validation - ensure array exists
+  if (!Array.isArray(data.skills)) {
+    data.skills = [];
   }
 
-  if (!data.title || data.title === 'Not specified') {
-    throw new Error('Could not extract current title from resume');
+  // Experience validation - ensure array exists and has basic structure
+  if (!Array.isArray(data.experience)) {
+    data.experience = [];
   }
 
-  if (!Array.isArray(data.skills) || data.skills.length === 0) {
-    throw new Error('No skills extracted from resume');
-  }
-
-  if (!Array.isArray(data.experience) || data.experience.length === 0) {
-    throw new Error('No experience extracted from resume');
-  }
-
-  data.experience.forEach((exp, index) => {
-    if (!exp.company || !exp.title || !exp.duration) {
-      throw new Error(`Incomplete experience data at position ${index + 1}`);
-    }
-    if (defaultValues.includes(exp.company)) {
-      throw new Error(`Generic company name detected in experience ${index + 1}`);
-    }
+  // Normalize experience entries
+  data.experience = data.experience.map((exp, index) => {
+    return {
+      company: exp.company || 'Not specified',
+      title: exp.title || 'Not specified',
+      duration: exp.duration || 'Not specified',
+      description: exp.description || ''
+    };
   });
 
-  if (!data.education || !data.education.degree || !data.education.school) {
-    throw new Error('Incomplete education information');
+  // Education validation - ensure object exists with basic structure
+  if (!data.education || typeof data.education !== 'object') {
+    data.education = {
+      degree: 'Not specified',
+      field: 'Not specified',
+      school: 'Not specified'
+    };
+  } else {
+    data.education = {
+      degree: data.education.degree || 'Not specified',
+      field: data.education.field || 'Not specified',
+      school: data.education.school || 'Not specified'
+    };
   }
+
+  // Log the validated data
+  console.log('Validated data:', data);
 
   return true;
 }
+
 
 async function generateIceBreakers({ profileData, resumeData, goal }) {
   const apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
@@ -282,17 +350,11 @@ async function generateIceBreakers({ profileData, resumeData, goal }) {
         messages: [
           {
             role: "system",
-            content: `You are an expert at creating personalized LinkedIn ice breakers that:
-            1. Are highly specific to the recipient's background and recent activities
-            2. Demonstrate genuine interest and research
-            3. Align perfectly with the chosen goal (${goal})
-            4. Create meaningful connections based on shared experiences
-            5. Show clear value proposition`
+            content: "You are an expert at creating personalized LinkedIn ice breakers. Always return responses in valid JSON format with exactly three categories and two options each."
           },
           {
             role: "user",
-            content: `Create highly personalized ice breakers for a ${goal} message to ${profileData.name}.
-            Return exactly three categories with two options each:
+            content: `Create personalized ice breakers for a ${goal} message to ${profileData.name}. Return in this exact JSON format:
             {
               "Skills & Experience": [
                 "A specific comment about their technical skills and your related experience",
@@ -322,15 +384,11 @@ async function generateIceBreakers({ profileData, resumeData, goal }) {
             
             Requirements:
             - Each ice breaker must be specific and reference actual details
-            - Include clear connections between your backgrounds
-            - Focus on mutual professional interests
-            - Demonstrate knowledge of their work
-            - Align with ${goal} purpose
             - Maximum 150 characters per ice breaker`
           }
         ],
         max_tokens: 1000,
-        temperature: 0.5
+        temperature: 0.3
       })
     });
 
@@ -339,74 +397,113 @@ async function generateIceBreakers({ profileData, resumeData, goal }) {
     }
 
     const data = await response.json();
-    return JSON.parse(data.choices[0].message.content);
+    const content = data.choices[0].message.content.trim();
+    
+    try {
+      // Extract JSON from response
+      const jsonStart = content.indexOf('{');
+      const jsonEnd = content.lastIndexOf('}') + 1;
+      const jsonString = content.slice(jsonStart, jsonEnd);
+      return JSON.parse(jsonString);
+    } catch (parseError) {
+      console.error('Error parsing ice breakers:', parseError);
+      console.log('Raw AI response:', content);
+      throw new Error('Invalid ice breaker format from AI');
+    }
   } catch (error) {
     console.error('Error generating ice breakers:', error);
     throw error;
   }
 }
 
+
 async function generateMessage({ profileData, resumeData, iceBreaker, goal, length }) {
   const apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
   
-  try {
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${config.GROQ_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "mixtral-8x7b-32768",
-        messages: [
-          {
-            role: "system",
-            content: `You are an expert at crafting professional LinkedIn messages that:
-            1. Are highly personalized and demonstrate genuine interest
-            2. Show clear value proposition and mutual benefit
-            3. Have a specific purpose aligned with the goal
-            4. Maintain professional tone while being conversational
-            5. End with a clear, actionable next step`
-          },
-          {
-            role: "user",
-            content: `Write a ${length} LinkedIn ${goal} message that achieves its purpose effectively.
-            
-            Context:
-            - Recipient: ${profileData.name} (${profileData.title} at ${profileData.company})
-            - Their Recent Post: ${profileData.recentPost || 'None'}
-            - Selected Ice Breaker: "${iceBreaker}"
-            - My Background: ${resumeData.title}
-            - My Skills: ${resumeData.skills.join(', ')}
-            - My Experience: ${resumeData.experience[0].title} at ${resumeData.experience[0].company}
-            
-            Requirements:
-            - Start with a personalized greeting
-            - Incorporate the ice breaker naturally
-            - Highlight specific shared interests or experiences
-            - Demonstrate clear value proposition
-            - Include specific details from both backgrounds
-            - End with a clear call to action
-            - Match the specified length (${length})
-            - Maintain professional yet friendly tone
-            - Focus on mutual benefit
-            - Align with ${goal} purpose`
-          }
-        ],
-        max_tokens: 500,
-        temperature: 0.4
-      })
-    });
+  // Implement exponential backoff
+  const maxRetries = 5;
+  let retryCount = 0;
+  let delay = 1000; // Start with 1 second delay
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+  while (retryCount < maxRetries) {
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${config.GROQ_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: "mixtral-8x7b-32768",
+          messages: [
+            {
+              role: "system",
+              content: `You are an expert at crafting professional LinkedIn messages that:
+              1. Are highly personalized and demonstrate genuine interest
+              2. Show clear value proposition and mutual benefit
+              3. Have a specific purpose aligned with the goal
+              4. Maintain professional tone while being conversational
+              5. End with a clear, actionable next step`
+            },
+            {
+              role: "user",
+              content: `Write a ${length} LinkedIn ${goal} message that achieves its purpose effectively.
+              
+              Context:
+              - Recipient: ${profileData.name} (${profileData.title} at ${profileData.company})
+              - Their Recent Post: ${profileData.recentPost || 'None'}
+              - Selected Ice Breaker: "${iceBreaker}"
+              - My Background: ${resumeData.title}
+              - My Skills: ${resumeData.skills.join(', ')}
+              - My Experience: ${resumeData.experience[0].title} at ${resumeData.experience[0].company}
+              
+              Requirements:
+              - Start with a personalized greeting
+              - Incorporate the ice breaker naturally
+              - Highlight specific shared interests or experiences
+              - Demonstrate clear value proposition
+              - Include specific details from both backgrounds
+              - End with a clear call to action
+              - Match the specified length (${length})
+              - Maintain professional yet friendly tone
+              - Focus on mutual benefit
+              - Align with ${goal} purpose`
+            }
+          ],
+          max_tokens: 500,
+          temperature: 0.4
+        })
+      });
+
+      if (response.status === 429) {
+        retryCount++;
+        if (retryCount === maxRetries) {
+          throw new Error('Maximum retries reached. Please try again later.');
+        }
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2; // Exponential backoff
+        continue;
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.choices[0].message.content.trim();
+
+    } catch (error) {
+      if (error.message.includes('429')) {
+        retryCount++;
+        if (retryCount === maxRetries) {
+          throw new Error('Rate limit exceeded. Please try again later.');
+        }
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2;
+        continue;
+      }
+      throw error;
     }
-
-    const data = await response.json();
-    return data.choices[0].message.content.trim();
-  } catch (error) {
-    console.error('Error generating message:', error);
-    throw error;
   }
 }
 

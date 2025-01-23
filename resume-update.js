@@ -1,227 +1,186 @@
 let selectedFile = null;
 
 document.addEventListener('DOMContentLoaded', function() {
-    const checkPdfLib = setInterval(() => {
-        if (window.pdfjsLib) {
-            clearInterval(checkPdfLib);
-            initializeFileHandlers();
-        }
-    }, 100);
+    const fileInput = document.getElementById('resume');
+    const uploadArea = document.getElementById('upload-area');
+    const filePreview = document.getElementById('file-preview');
+    const parseButton = document.getElementById('parse-resume');
+    const parseStatus = document.getElementById('parse-status');
+
+    // File Upload Handlers
+    fileInput.addEventListener('change', handleFileSelect);
+    uploadArea.addEventListener('dragover', handleDragOver);
+    uploadArea.addEventListener('dragleave', handleDragLeave);
+    uploadArea.addEventListener('drop', handleFileDrop);
+    parseButton.addEventListener('click', handleParse);
 });
 
-function initializeFileHandlers() {
-    const fileInput = document.getElementById('resume');
-    const fileName = document.getElementById('file-name');
-    const parseButton = document.getElementById('parse-resume');
-    const addExperienceButton = document.getElementById('add-experience');
-    const addEducationButton = document.getElementById('add-education');
-    const cancelEditButton = document.getElementById('cancel-edit');
-    const resumeEditForm = document.getElementById('resume-edit-form');
-
-    fileInput.addEventListener('change', function(e) {
-        selectedFile = e.target.files[0];
-        if (selectedFile) {
-            fileName.textContent = selectedFile.name;
-            showStatus('File selected: ' + selectedFile.name, 'success');
-            parseButton.disabled = false;
-        }
-    });
-
-    parseButton.addEventListener('click', handleResumeUpdate);
-    addExperienceButton?.addEventListener('click', addExperienceField);
-    addEducationButton?.addEventListener('click', addEducationField);
-    cancelEditButton?.addEventListener('click', () => window.close());
-    resumeEditForm?.addEventListener('submit', handleFormSubmit);
-
-    // Initialize container click handlers
-    document.getElementById('experience-container')?.addEventListener('click', function(e) {
-        if (e.target.classList.contains('remove-experience')) {
-            e.target.closest('.experience-entry').remove();
-        }
-    });
-
-    document.getElementById('education-container')?.addEventListener('click', function(e) {
-        if (e.target.classList.contains('remove-education')) {
-            e.target.closest('.education-entry').remove();
-        }
-    });
+function handleFileSelect(e) {
+    const file = e.target.files[0];
+    if (file) {
+        validateAndPreviewFile(file);
+    }
 }
 
-async function handleResumeUpdate() {
-    if (!selectedFile) {
-        showStatus('Please select a file', 'error');
+function handleDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.classList.add('drag-over');
+}
+
+function handleDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.classList.remove('drag-over');
+}
+
+function handleFileDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.classList.remove('drag-over');
+
+    const file = e.dataTransfer.files[0];
+    if (file) {
+        validateAndPreviewFile(file);
+    }
+}
+
+function validateAndPreviewFile(file) {
+    const validTypes = ['.pdf', '.doc', '.docx', '.txt'];
+    const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+
+    if (!validTypes.includes(fileExtension)) {
+        showParseStatus('Please upload a PDF, DOC, DOCX, or TXT file', 'error');
         return;
     }
 
-    try {
-        showStatus('Processing resume...', 'processing');
-        
-        const resumeText = await extractTextFromFile(selectedFile);
-        console.log('Extracted text length:', resumeText.length);
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        showParseStatus('File size should be less than 5MB', 'error');
+        return;
+    }
 
-        if (!resumeText || resumeText.trim().length === 0) {
-            throw new Error('No text content could be extracted from the file');
+    selectedFile = file;
+    displayFilePreview(file);
+    document.getElementById('parse-resume').disabled = false;
+}
+
+function displayFilePreview(file) {
+    const uploadArea = document.getElementById('upload-area');
+    const filePreview = document.getElementById('file-preview');
+    const parseStatus = document.getElementById('parse-status');
+
+    // Hide upload area and status
+    uploadArea.classList.add('hidden');
+    parseStatus.classList.add('hidden');
+
+    // Show file preview
+    filePreview.classList.remove('hidden');
+    filePreview.innerHTML = `
+        <div class="file-preview-content">
+            <div class="file-info">
+                <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+                <div class="file-details">
+                    <span class="file-name">${file.name}</span>
+                    <span class="file-size">${formatFileSize(file.size)}</span>
+                </div>
+            </div>
+            <button class="remove-file">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+    `;
+
+    // Add event listener for remove button
+    filePreview.querySelector('.remove-file').addEventListener('click', removeFile);
+}
+
+function removeFile() {
+    selectedFile = null;
+    const fileInput = document.getElementById('resume');
+    const uploadArea = document.getElementById('upload-area');
+    const filePreview = document.getElementById('file-preview');
+    const parseStatus = document.getElementById('parse-status');
+    const parseButton = document.getElementById('parse-resume');
+
+    fileInput.value = '';
+    uploadArea.classList.remove('hidden');
+    filePreview.classList.add('hidden');
+    parseStatus.classList.add('hidden');
+    parseButton.disabled = true;
+}
+
+async function handleParse() {
+    if (!selectedFile) return;
+
+    const parseButton = document.getElementById('parse-resume');
+    parseButton.disabled = true;
+
+    showParseStatus('Parsing your resume...', 'parsing');
+
+    try {
+        let resumeText;
+        if (selectedFile.type === 'application/pdf') {
+            // Handle PDF files
+            resumeText = await extractPDFContent(selectedFile);
+        } else {
+            // Handle other file types (doc, docx, txt)
+            resumeText = await readFileContent(selectedFile);
         }
 
-        const response = await new Promise((resolve, reject) => {
-            chrome.runtime.sendMessage({
-                action: "parseResume",
-                content: resumeText
-            }, function(response) {
-                if (chrome.runtime.lastError) {
-                    reject(new Error(chrome.runtime.lastError.message));
-                    return;
-                }
-                if (response.error) {
-                    reject(new Error(response.error));
-                    return;
-                }
-                resolve(response);
+        console.log('Extracted text:', resumeText); // Debug log
+
+        // Send to AI for parsing through background script
+        const response = await chrome.runtime.sendMessage({
+            action: "parseResume",
+            content: resumeText
+        });
+
+        if (response.error) {
+            throw new Error(response.error);
+        }
+
+        console.log('Parsed resume data:', response.resumeData); // Debug log
+
+        showParseStatus('Resume parsed successfully!', 'success');
+
+        // Store the parsed data
+        await chrome.storage.local.set({ 
+            'tempResumeData': response.resumeData,
+            'originalResumeText': resumeText
+        });
+
+        // Open resume preview in a new window
+        setTimeout(() => {
+            chrome.windows.create({
+                url: chrome.runtime.getURL('resume-preview.html'),
+                type: 'popup',
+                width: 800,
+                height: 600,
+                left: Math.round((screen.width - 800) / 2),
+                top: Math.round((screen.height - 600) / 2)
             });
-        });
+        }, 1500);
 
-        if (!response.resumeData) {
-            throw new Error('No resume data received from parser');
+    } catch (error) {
+        console.error('Parse error:', error);
+        showParseStatus(error.message || 'Error parsing resume. Please try again.', 'error');
+        parseButton.disabled = false;
+    }
+}
+
+async function extractPDFContent(file) {
+    try {
+        // Load PDF.js if not already loaded
+        if (!pdfjsLib) {
+            pdfjsLib = window.pdfjsLib;
         }
 
-        showParsedContent(response.resumeData);
-        document.getElementById('parse-resume').classList.add('hidden');
-        showStatus('Resume parsed successfully! Please review and edit if needed.', 'success');
-
-    } catch (error) {
-        console.error('Resume update error:', error);
-        showStatus(error.message || 'Failed to update resume', 'error');
-    }
-}
-
-// [Previous file reading functions remain the same]
-
-function showParsedContent(resumeData) {
-    const parsedContent = document.getElementById('parsed-content');
-    
-    // Populate basic fields
-    document.getElementById('edit-name').value = resumeData.name;
-    document.getElementById('edit-title').value = resumeData.title;
-    document.getElementById('edit-skills').value = resumeData.skills.join(', ');
-    
-    // Populate experience entries
-    const experienceContainer = document.getElementById('experience-container');
-    experienceContainer.innerHTML = '';
-    resumeData.experience.forEach((exp) => {
-        experienceContainer.appendChild(createExperienceEntry(exp));
-    });
-    
-    // Populate education entries
-    const educationContainer = document.getElementById('education-container');
-    educationContainer.innerHTML = '';
-    
-    // Handle both single education object and array of education
-    if (Array.isArray(resumeData.education)) {
-        resumeData.education.forEach((edu) => {
-            educationContainer.appendChild(createEducationEntry(edu));
-        });
-    } else if (resumeData.education) {
-        educationContainer.appendChild(createEducationEntry(resumeData.education));
-    }
-    
-    parsedContent.classList.remove('hidden');
-}
-
-function createExperienceEntry(experience = {}) {
-    const div = document.createElement('div');
-    div.className = 'experience-entry';
-    div.innerHTML = `
-        <div class="form-group">
-            <label>Company:</label>
-            <input type="text" class="form-input company" value="${experience.company || ''}" required>
-        </div>
-        <div class="form-group">
-            <label>Title:</label>
-            <input type="text" class="form-input title" value="${experience.title || ''}" required>
-        </div>
-        <div class="form-group">
-            <label>Duration:</label>
-            <input type="text" class="form-input duration" value="${experience.duration || ''}" required>
-        </div>
-        <div class="form-group">
-            <label>Description:</label>
-            <textarea class="form-input description" required>${experience.description || ''}</textarea>
-        </div>
-        <button type="button" class="remove-experience text-button">Remove</button>
-    `;
-    return div;
-}
-
-function createEducationEntry(education = {}) {
-    const div = document.createElement('div');
-    div.className = 'education-entry';
-    div.innerHTML = `
-        <div class="form-group">
-            <label>Degree:</label>
-            <input type="text" class="form-input degree" value="${education.degree || ''}" required>
-        </div>
-        <div class="form-group">
-            <label>Field of Study:</label>
-            <input type="text" class="form-input field" value="${education.field || ''}" required>
-        </div>
-        <div class="form-group">
-            <label>School:</label>
-            <input type="text" class="form-input school" value="${education.school || ''}" required>
-        </div>
-        <button type="button" class="remove-education text-button">Remove</button>
-    `;
-    return div;
-}
-
-function addExperienceField() {
-    const container = document.getElementById('experience-container');
-    container.appendChild(createExperienceEntry());
-}
-
-function addEducationField() {
-    const container = document.getElementById('education-container');
-    container.appendChild(createEducationEntry());
-}
-
-async function handleFormSubmit(e) {
-    e.preventDefault();
-
-    try {
-        const updatedData = {
-            name: document.getElementById('edit-name').value,
-            title: document.getElementById('edit-title').value,
-            skills: document.getElementById('edit-skills').value.split(',').map(s => s.trim()),
-            experience: Array.from(document.querySelectorAll('.experience-entry')).map(entry => ({
-                company: entry.querySelector('.company').value,
-                title: entry.querySelector('.title').value,
-                duration: entry.querySelector('.duration').value,
-                description: entry.querySelector('.description').value
-            })),
-            education: Array.from(document.querySelectorAll('.education-entry')).map(entry => ({
-                degree: entry.querySelector('.degree').value,
-                field: entry.querySelector('.field').value,
-                school: entry.querySelector('.school').value
-            }))
-        };
-
-        await saveResumeData(updatedData);
-    } catch (error) {
-        console.error('Form submission error:', error);
-        showStatus(error.message || 'Failed to save changes', 'error');
-    }
-}
-
-// [Previous saveResumeData and showStatus functions remain the same]
-async function extractTextFromFile(file) {
-    if (file.type === 'application/pdf') {
-        return extractTextFromPDF(file);
-    } else {
-        return readTextFile(file);
-    }
-}
-
-async function extractTextFromPDF(file) {
-    try {
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         let fullText = '';
@@ -242,43 +201,47 @@ async function extractTextFromPDF(file) {
     }
 }
 
-function readTextFile(file) {
+function readFileContent(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = (e) => resolve(e.target.result);
-        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.onerror = (e) => reject(new Error('Failed to read file'));
         reader.readAsText(file);
     });
 }
 
 
-async function saveResumeData(updatedData) {
-    try {
-        const result = await chrome.storage.local.get(['userData', 'users']);
-        const userData = result.userData;
-        const users = result.users || {};
+function showParseStatus(message, type) {
+    const parseStatus = document.getElementById('parse-status');
+    parseStatus.classList.remove('hidden', 'parsing', 'success', 'error');
+    parseStatus.classList.add(type);
 
-        if (!userData?.email) {
-            throw new Error('User not found. Please log in again.');
-        }
-
-        userData.resumeData = updatedData;
-        users[userData.email].resumeData = updatedData;
-
-        await chrome.storage.local.set({
-            'userData': userData,
-            'users': users
-        });
-
-        showStatus('Resume updated successfully!', 'success');
-        setTimeout(() => window.close(), 1500);
-    } catch (error) {
-        throw new Error('Failed to save resume data: ' + error.message);
-    }
+    parseStatus.innerHTML = `
+        <div class="status-content">
+            ${type === 'parsing' ? 
+                '<svg class="loading-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>' 
+                : type === 'success' ?
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16"><path d="M20 6L9 17l-5-5"/></svg>'
+                : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>'
+            }
+            <span>${message}</span>
+        </div>
+    `;
 }
 
-function showStatus(message, type) {
-    const statusElement = document.getElementById('status');
-    statusElement.textContent = message;
-    statusElement.className = `status ${type}`;
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function readFileContent(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = (e) => reject(new Error('Failed to read file'));
+        reader.readAsText(file);
+    });
 }

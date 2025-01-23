@@ -17,7 +17,14 @@
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
   },
   "web_accessible_resources": [{
-    "resources": ["pdf.worker.mjs", "pdf.mjs", "pdf-init.js"],
+    "resources": [
+      "pdf.worker.mjs", 
+      "pdf.mjs", 
+      "pdf-init.js",
+      "resume-preview.html",
+      "resume-update.html",
+      "signup.html"
+    ],
     "matches": ["<all_urls>"]
   }],
   "action": {
